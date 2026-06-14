@@ -1,0 +1,6 @@
+{
+  "name": "Personal Developer Dashboard",
+  "description": "An Arabic-first responsive personal developer dashboard and resource hub with secure credential management and project tracking.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
