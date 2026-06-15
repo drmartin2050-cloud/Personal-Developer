@@ -13,6 +13,7 @@ export const locales: Record<'ar' | 'en', LocalizationSchema> = {
       calculator: 'حاسبة التكاليف والرموز',
       optimizer: 'تحسين الأوامر وصائغها',
       expenses: 'متابع تكاليف الخدمة السحابية',
+      ai_agent: 'الوكيل الذكي والـ Sentry',
     },
     dashboard: {
       welcome: 'أهلاً بك بك في بوابة المطور',
@@ -205,6 +206,7 @@ export const locales: Record<'ar' | 'en', LocalizationSchema> = {
       calculator: 'Token Calculator',
       optimizer: 'Prompt Optimizer',
       expenses: 'Expense Tracker',
+      ai_agent: 'AI Sentry Control',
     },
     dashboard: {
       welcome: 'Welcome to Developer Portal',

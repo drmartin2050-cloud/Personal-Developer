@@ -1,0 +1,184 @@
+{
+  "entities": {
+    "developer_projects": {
+      "title": "Developer Project",
+      "description": "Information about software developer projects enrolled in the devportal",
+      "type": "object",
+      "properties": {
+        "project_name": {
+          "type": "string",
+          "description": "Name of the developer project"
+        },
+        "platform_used": {
+          "type": "string",
+          "description": "The cloud platform or service provider used"
+        },
+        "associated_email": {
+          "type": "string",
+          "description": "Developer email linked to this project"
+        },
+        "project_url": {
+          "type": "string",
+          "description": "Link to project workspace"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation timestamp"
+        }
+      },
+      "required": ["project_name", "platform_used", "associated_email"]
+    },
+    "developer_credentials": {
+      "title": "Developer Credential",
+      "description": "Contains developer credentials and connection keys",
+      "type": "object",
+      "properties": {
+        "service_name": {
+          "type": "string",
+          "description": "E.g., stripes, supabase, base44"
+        },
+        "ip_address": {
+          "type": "string",
+          "description": "Authorized IP or client host"
+        },
+        "api_token": {
+          "type": "string",
+          "description": "Encrypted credentials access token"
+        },
+        "secret_key": {
+          "type": "string",
+          "description": "AES Encrypted secret signature string"
+        },
+        "service_url": {
+          "type": "string",
+          "description": "API Gateway console or login page"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Storage timestamp"
+        }
+      },
+      "required": ["service_name"]
+    },
+    "prompt_history": {
+      "title": "Smart Prompt history log",
+      "description": "Optimized prompt token tracking logs",
+      "type": "object",
+      "properties": {
+        "arabic_prompt": {
+          "type": "string"
+        },
+        "english_prompt": {
+          "type": "string"
+        },
+        "arabic_tokens": {
+          "type": "integer"
+        },
+        "english_tokens": {
+          "type": "integer"
+        },
+        "tokens_saved": {
+          "type": "integer"
+        },
+        "percent_saved": {
+          "type": "integer"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["arabic_prompt", "english_prompt"]
+    },
+    "secret_keys": {
+      "title": "Cloud Key Vault Item",
+      "description": "Cryptographic api key record inside secure keyring",
+      "type": "object",
+      "properties": {
+        "platform": {
+          "type": "string"
+        },
+        "key_name": {
+          "type": "string"
+        },
+        "key_type": {
+          "type": "string"
+        },
+        "encrypted_value": {
+          "type": "string"
+        },
+        "official_link": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "balance": {
+          "type": "number"
+        },
+        "usage_count": {
+          "type": "integer"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["platform", "key_name", "key_type", "encrypted_value"]
+    },
+    "app_notifications": {
+      "title": "Platform Alert Notification",
+      "description": "Incidents and health warnings pushed by central brain",
+      "type": "object",
+      "properties": {
+        "title_ar": {
+          "type": "string"
+        },
+        "title_en": {
+          "type": "string"
+        },
+        "message_ar": {
+          "type": "string"
+        },
+        "message_en": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "is_read": {
+          "type": "boolean"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["title_ar", "title_en", "message_ar", "message_en"]
+    }
+  },
+  "firestore": {
+    "/developer_projects/{projectId}": {
+      "schema": "developer_projects",
+      "description": "All developer projects loaded on Firebase"
+    },
+    "/developer_credentials/{credId}": {
+      "schema": "developer_credentials",
+      "description": "Secure API keys collection"
+    },
+    "/prompt_history/{historyId}": {
+      "schema": "prompt_history",
+      "description": "Prompt inputs and metrics tracker"
+    },
+    "/secret_keys/{keyId}": {
+      "schema": "secret_keys",
+      "description": "Dynamic cloud credentials keyring"
+    },
+    "/app_notifications/{notifId}": {
+      "schema": "app_notifications",
+      "description": "System events logs history"
+    }
+  }
+}

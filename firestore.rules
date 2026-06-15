@@ -1,0 +1,100 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Safety Net default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Checking formatted IDs
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // Validate email verification for strict non-anonymous writes
+    function isVerifiedUser() {
+      return isSignedIn() && (request.auth.token.email_verified == true || request.auth.token.firebase.sign_in_provider == 'google.com');
+    }
+
+    // Entities validation helpers
+    function isValidDeveloperProject(data) {
+      return data.keys().hasAll(['project_name', 'platform_used', 'associated_email'])
+        && data.project_name is string && data.project_name.size() > 0 && data.project_name.size() <= 200
+        && data.platform_used is string && data.platform_used.size() > 0 && data.platform_used.size() <= 100
+        && data.associated_email is string && data.associated_email.size() <= 150;
+    }
+
+    function isValidDeveloperCredential(data) {
+      return data.keys().hasAll(['service_name'])
+        && data.service_name is string && data.service_name.size() > 0 && data.service_name.size() <= 150;
+    }
+
+    function isValidPromptHistory(data) {
+      return data.keys().hasAll(['arabic_prompt', 'english_prompt'])
+        && data.arabic_prompt is string && data.arabic_prompt.size() <= 10000
+        && data.english_prompt is string && data.english_prompt.size() <= 10000;
+    }
+
+    function isValidSecretKey(data) {
+      return data.keys().hasAll(['platform', 'key_name', 'key_type', 'encrypted_value'])
+        && data.platform is string && data.platform.size() <= 100
+        && data.key_name is string && data.key_name.size() <= 200
+        && data.key_type is string && data.key_type.size() <= 100
+        && data.encrypted_value is string && data.encrypted_value.size() <= 5000;
+    }
+
+    function isValidAppNotification(data) {
+      return data.keys().hasAll(['title_ar', 'title_en', 'message_ar', 'message_en'])
+        && data.title_ar is string && data.title_ar.size() <= 500
+        && data.title_en is string && data.title_en.size() <= 500
+        && data.message_ar is string && data.message_ar.size() <= 5000
+        && data.message_en is string && data.message_en.size() <= 5000;
+    }
+
+    // Match blocks
+    match /developer_projects/{projectId} {
+      allow read: if isSignedIn();
+      allow create: if isVerifiedUser() && isValidDeveloperProject(request.resource.data);
+      allow update: if isVerifiedUser() && isValidDeveloperProject(request.resource.data);
+      allow delete: if isVerifiedUser();
+    }
+
+    match /developer_credentials/{credId} {
+      allow read: if isSignedIn();
+      allow create: if isVerifiedUser() && isValidDeveloperCredential(request.resource.data);
+      allow update: if isVerifiedUser() && isValidDeveloperCredential(request.resource.data);
+      allow delete: if isVerifiedUser();
+    }
+
+    match /prompt_history/{historyId} {
+      allow read: if isSignedIn();
+      allow create: if isVerifiedUser() && isValidPromptHistory(request.resource.data);
+      allow update: if isVerifiedUser() && isValidPromptHistory(request.resource.data);
+      allow delete: if isVerifiedUser();
+    }
+
+    match /secret_keys/{keyId} {
+      allow read: if isSignedIn();
+      allow create: if isVerifiedUser() && isValidSecretKey(request.resource.data);
+      allow update: if isVerifiedUser() && isValidSecretKey(request.resource.data);
+      allow delete: if isVerifiedUser();
+    }
+
+    match /app_notifications/{notifId} {
+      allow read: if isSignedIn();
+      allow create: if isVerifiedUser() && isValidAppNotification(request.resource.data);
+      allow update: if isVerifiedUser() && isValidAppNotification(request.resource.data);
+      allow delete: if isVerifiedUser();
+    }
+  }
+}

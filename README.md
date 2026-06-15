@@ -1,20 +1,28 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
-</div>
+# 🤖 Autonomous Sentry DevPortal & Encrypted Cloud Vault
 
-# Run and deploy your AI Studio app
+An advanced cloud-synced portal constructed securely with **React 19**, **Vite**, **TypeScript**, and **Supabase (Durable Persistence)**. Integrated with an **Agentic AI Sentry Core Brain** that monitors token counts, automates cryptographic key validation routines, performs self-repairing failover swaps, and automates continuous deployment pipelines.
 
-This contains everything you need to run your app locally.
+## 🌟 Key Highlights
 
-View your app in AI Studio: https://ai.studio/apps/75af7cbe-ce28-447e-8591-7831743e933c
+### 1. 🧠 Core Sentry Core Brain (`src/ai/agent.ts`)
+- **Real-Time Health Evaluator**: Dynamically calculates system health score by scanning Supabase connections and decrypting stored credential records.
+- **Continuous Diagnostics**: Inspects active API tunnels, flags offline keys, and auto-diagnoses anomalies.
+- **Subsystem Healing**: Automatically deploys cryptographic corrections, resets security buffers, and cycles backup keys to prevent system interruptions.
 
-## Run Locally
+### 2. 🧪 Automated Testing Suite (`src/ai/autoTester.ts`)
+- Continuously runs robust unit verifications checking Local Crypto Vault configurations, Supabase schema connections, and API connectivity thresholds.
+- Logs and audits diagnostic test reports with historical storage in Supabase and `localStorage` fallback.
 
-**Prerequisites:**  Node.js
+### 3. 🚀 Dual Pipeline Deployer (`src/ai/autoDeployer.ts` / `src/utils/deploymentAPI.ts`)
+- **Automated CI/CD**: Performs comprehensive pre-deployment health verifications.
+- **Git Push Operations**: Auto-composes Git trees and posts direct commits to private target GitHub branches.
+- **Hugging Face Spacers integration**: Pushes files to Hugging Face Spaces using Space commit protocols.
+- **Self-Healing Rollbacks**: Automatically triggers rollbacks to the latest verified successful commit state if the deployed build is corrupted or offline.
 
+---
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+## 🛠️ Technological Specifications
+
+- **Frontend Core**: React 19, Tailwind CSS (Modern Theme Configs), Lucide Icons.
+- **Animations / Motion**: `motion` layout and micro-transitions.
+- **Durable Storage**: Supabase Database with AES-256 equivalent web encryption formulas.

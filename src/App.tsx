@@ -13,7 +13,8 @@ import {
   Calculator,
   Sparkles,
   Mail,
-  Coins
+  Coins,
+  Brain
 } from 'lucide-react';
 import { ActiveTab, Language, Project, CredentialItem } from './types';
 import { locales } from './locales';
@@ -33,6 +34,7 @@ import AIAssistantModal from './components/AIAssistantModal';
 import NewsTicker from './components/NewsTicker';
 import AlertBell from './components/AlertBell';
 import ExpenseTracker from './components/ExpenseTracker';
+import AIAgentDashboard from './components/AIAgentDashboard';
 
 // Pre-seeded local projects for starting visual feedback
 const SEED_PROJECTS: Project[] = [
@@ -330,6 +332,7 @@ export default function App() {
     { id: 'optimizer' as ActiveTab, label: t.nav.optimizer, icon: Sparkles },
     { id: 'automation' as ActiveTab, label: t.nav.automation, icon: Webhook },
     { id: 'expenses' as ActiveTab, label: t.nav.expenses, icon: Coins },
+    { id: 'ai_agent' as ActiveTab, label: t.nav.ai_agent, icon: Brain },
   ];
 
   const handleNavigate = (tab: ActiveTab) => {
@@ -490,6 +493,7 @@ export default function App() {
                 {activeTab === 'optimizer' && t.nav.optimizer}
                 {activeTab === 'automation' && t.nav.automation}
                 {activeTab === 'expenses' && t.nav.expenses}
+                {activeTab === 'ai_agent' && t.nav.ai_agent}
               </h2>
             </div>
             
@@ -583,6 +587,13 @@ export default function App() {
             {activeTab === 'expenses' && (
               <ExpenseTracker
                 key="expenses-view"
+                lang={lang}
+              />
+            )}
+
+            {activeTab === 'ai_agent' && (
+              <AIAgentDashboard
+                key="ai-agent-view"
                 lang={lang}
               />
             )}

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Mail, Plus, Copy, Check, ChevronDown, ChevronUp, Trash2, Tag, Info, PlusCircle, X, Sparkles, ShieldAlert } from 'lucide-react';
 import { LocalizationSchema, Language } from '../types';
+import GoogleServicesHub from './GoogleServicesHub';
 
 interface EmailAlias {
   id: string;
@@ -213,6 +214,9 @@ export default function EmailsView({ t, lang }: EmailsViewProps) {
           </p>
         </div>
       </div>
+
+      {/* Real Live Google Workspace Integration Hub */}
+      <GoogleServicesHub lang={lang} />
 
       {/* Main Action Bar */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-4.5 border border-slate-200 rounded-3xl shadow-3d-flat card-persp">
