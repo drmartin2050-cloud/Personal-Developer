@@ -1,4 +1,32 @@
-# 🤖 Autonomous Sentry DevPortal & Encrypted Cloud Vault
+# 🤖 Autonomous 
+
+
+---
+title: Developer Dashboard
+emoji: 🖥️
+colorFrom: blue
+colorTo: indigo
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
+# Personal Developer Dashboard
+
+لوحة تحكم مطور شخصي تدعم العربية والإنجليزية.
+
+## المميزات
+- Dashboard تفاعلي
+- دعم Firebase و Supabase
+- تكامل مع Gemini AI
+- تصميم متجاوب (Responsive)
+
+
+
+
+
+
+Sentry DevPortal & Encrypted Cloud Vault
 
 An advanced cloud-synced portal constructed securely with **React 19**, **Vite**, **TypeScript**, and **Supabase (Durable Persistence)**. Integrated with an **Agentic AI Sentry Core Brain** that monitors token counts, automates cryptographic key validation routines, performs self-repairing failover swaps, and automates continuous deployment pipelines.
 
