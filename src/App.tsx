@@ -11,7 +11,9 @@ import {
   Webhook,
   Database,
   Calculator,
-  Sparkles
+  Sparkles,
+  Mail,
+  Coins
 } from 'lucide-react';
 import { ActiveTab, Language, Project, CredentialItem } from './types';
 import { locales } from './locales';
@@ -22,11 +24,15 @@ import { isSupabaseConnected, getSupabaseClient, initializeDynamicSupabase } fro
 import DashboardView from './components/DashboardView';
 import ResourcesView from './components/ResourcesView';
 import ProjectsView from './components/ProjectsView';
-import SecretsView from './components/SecretsView';
+import SecretsManager from './components/SecretsManager';
 import AutomationView from './components/AutomationView';
 import CalculatorView from './components/CalculatorView';
 import OptimizerView from './components/OptimizerView';
+import EmailsView from './components/EmailsView';
 import AIAssistantModal from './components/AIAssistantModal';
+import NewsTicker from './components/NewsTicker';
+import AlertBell from './components/AlertBell';
+import ExpenseTracker from './components/ExpenseTracker';
 
 // Pre-seeded local projects for starting visual feedback
 const SEED_PROJECTS: Project[] = [
@@ -80,7 +86,7 @@ export default function App() {
   const [credentials, setCredentials] = useState<CredentialItem[]>([]);
   const [isAddProjectModalOpen, setIsAddProjectModalOpen] = useState(false);
 
-  // Master Secrets Security Locking Key (default 'admin' for demo decryption)
+  // Master Secrets Security Locking Key (default 'Eissa2026' for demo decryption)
   const [masterPasswordKey, setMasterPasswordKey] = useState<string>(() => {
     return sessionStorage.getItem('dev_hub_master_token') || '';
   });
@@ -159,13 +165,13 @@ export default function App() {
     if (savedC) {
       setCredentials(JSON.parse(savedC));
     } else {
-      // Default encrypted mock credential using 'admin'
+      // Default encrypted mock credential using 'Eissa2026'
       const defaultCred: CredentialItem = {
         id: 'seed-cred-1',
         serviceName: 'Demo Supabase DB',
         ipAddress: 'db.supabase.com',
-        apiToken: encryptText('sb_anon_public_key_demo_667238291', 'admin'),
-        secretKey: encryptText('sb_service_role_secret_key_9921', 'admin'),
+        apiToken: encryptText('sb_anon_public_key_demo_667238291', 'Eissa2026'),
+        secretKey: encryptText('sb_service_role_secret_key_9921', 'Eissa2026'),
         serviceUrl: 'https://supabase.com/dashboard',
       };
       setCredentials([defaultCred]);
@@ -319,9 +325,11 @@ export default function App() {
     { id: 'resources' as ActiveTab, label: t.nav.resources, icon: Library },
     { id: 'projects' as ActiveTab, label: t.nav.projects, icon: FolderGit2 },
     { id: 'secrets' as ActiveTab, label: t.nav.secrets, icon: ShieldCheck },
-    { id: 'automation' as ActiveTab, label: t.nav.automation, icon: Webhook },
+    { id: 'emails' as ActiveTab, label: t.nav.emails, icon: Mail },
     { id: 'calculator' as ActiveTab, label: t.nav.calculator, icon: Calculator },
     { id: 'optimizer' as ActiveTab, label: t.nav.optimizer, icon: Sparkles },
+    { id: 'automation' as ActiveTab, label: t.nav.automation, icon: Webhook },
+    { id: 'expenses' as ActiveTab, label: t.nav.expenses, icon: Coins },
   ];
 
   const handleNavigate = (tab: ActiveTab) => {
@@ -335,210 +343,171 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col md:flex-row antialiased transition-colors duration-300 pb-20 md:pb-0">
+    <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col antialiased transition-colors duration-300">
       
-      {/* 1. Mobile Shell Header Hud (Sticky Top on Mobile) */}
-      <header className="md:hidden flex items-center justify-between p-4 bg-zinc-900 border-b border-zinc-800/80 backdrop-blur-md sticky top-0 z-40">
-        <div className="flex items-center gap-3">
-          <div className="h-9 w-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
-            <FolderGit2 className="h-5 w-5" />
-          </div>
-          <div>
-            <span className="font-bold text-xs tracking-tight text-white block select-none">
-              {lang === 'ar' ? 'بوابة المطورين' : 'DevPortal'}
-            </span>
-            {/* Status light */}
-            <button 
-              onClick={() => setIsConnSetupOpen(true)}
-              className="flex items-center gap-1.5 text-[9px] text-zinc-400 hover:text-emerald-400 transition"
-            >
-              <span className={`h-1.5 w-1.5 rounded-full ${isConnectedState ? 'bg-emerald-500 animate-pulse' : 'bg-zinc-600'}`} />
-              <span>{isConnectedState ? (lang === 'ar' ? 'متصل سحابياً' : 'Cloud Sync Active') : (lang === 'ar' ? 'ضبط التزامن' : 'Setup Sync')}</span>
-            </button>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {/* Mobile Language Toggle */}
-          <button
-            onClick={toggleLanguage}
-            className="p-2.5 rounded-lg bg-zinc-805 border border-zinc-700/60 text-zinc-300 font-bold text-xs cursor-pointer flex items-center gap-1 hover:bg-zinc-750 transition"
-          >
-            <Globe className="h-4 w-4 text-emerald-400 shrink-0" />
-            <span>{lang === 'ar' ? 'English' : 'عربي'}</span>
-          </button>
-        </div>
-      </header>
-
-      {/* 2. Desktop Sidebar Navigation (Hidden on mobile) */}
-      <aside
-        id="app-sidebar"
-        className="hidden md:flex flex-col justify-between w-64 bg-zinc-900 border-r border-zinc-800/80 p-6 h-screen sticky top-0 z-30 transition-all duration-300 shrink-0"
-      >
-        <div className="space-y-8">
-          {/* Logo Brand Card */}
-          <div className="flex items-center justify-between pb-6 border-b border-zinc-805">
+      {/* 1. Dynamic Persistent Sticky Top Navbar Grid */}
+      <header className="sticky top-0 z-40 w-full bg-white/90 backdrop-blur-sm border-b border-slate-200/80 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            
+            {/* Left Brand Area */}
             <div className="flex items-center gap-3">
-              <div className="w-9.5 h-9.5 bg-sky-650 rounded-lg flex items-center justify-center text-zinc-950 shadow-md">
-                <FolderGit2 className="h-5.5 w-5.5 text-zinc-950" />
+              <div className="w-10 h-10 bg-sky-600 rounded-xl flex items-center justify-center text-white shadow-xs shadow-sky-600/10 shrink-0 font-bold">
+                <FolderGit2 className="h-5.5 w-5.5" />
               </div>
               <div>
-                <h2 className="font-extrabold text-sm text-white max-w-[120px] leading-tight">
-                  {lang === 'ar' ? 'بوابة المطور' : 'Developer Hub'}
+                <h2 className="font-extrabold text-sm text-slate-800 tracking-tight leading-tight select-none">
+                  {lang === 'ar' ? 'بوابة المطورين' : 'DevPortal'}
                 </h2>
-                {/* Dynamically connected state display */}
                 <button
                   onClick={() => setIsConnSetupOpen(true)}
                   className="flex items-center gap-1 mt-0.5"
                 >
-                  <span className={`h-1.5 w-1.5 rounded-full ${isConnectedState ? 'bg-sky-500 animate-pulse' : 'bg-zinc-550'}`} />
-                  <span className="text-[9px] font-mono text-zinc-450 hover:text-white uppercase tracking-wider block">
-                    {isConnectedState ? 'CLOUD ACTIVE' : 'LOCAL CACHE'}
+                  <span className={`h-1.5 w-1.5 rounded-full ${isConnectedState ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`} />
+                  <span className="text-[9px] font-mono text-slate-500 hover:text-sky-600 uppercase tracking-widest block font-bold">
+                    {isConnectedState ? (lang === 'ar' ? 'سحابي' : 'CLOUD ACTIVE') : (lang === 'ar' ? 'محلي' : 'LOCAL CACHE')}
                   </span>
                 </button>
               </div>
             </div>
-          </div>
 
-          {/* Sidebar Tabs Links */}
-          <nav className="space-y-1.5" id="nav-group">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = activeTab === item.id;
-              return (
+            {/* Middle Nav Items - Desktop/MD and higher */}
+            <nav className="hidden lg:flex items-center gap-1">
+              {navItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = activeTab === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => handleNavigate(item.id)}
+                    className={`
+                      flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer select-none
+                      ${
+                        isActive
+                          ? 'bg-sky-50 text-sky-600 shadow-3xs'
+                          : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100/60'
+                      }
+                    `}
+                  >
+                    <Icon className="h-4 w-4 shrink-0" />
+                    <span>{item.label}</span>
+                  </button>
+                );
+              })}
+            </nav>
+
+            {/* Right side actions - Sync Trigger, Lang Toggle, Lock Key */}
+            <div className="flex items-center gap-2">
+              
+              {/* Sync Database setup icon trigger */}
+              <button
+                onClick={() => setIsConnSetupOpen(true)}
+                title={lang === 'ar' ? 'ربط سحابي' : 'Connect Supabase'}
+                className={`p-2 rounded-xl border text-xs font-extrabold transition duration-200 cursor-pointer flex items-center justify-center
+                  ${
+                    isConnectedState 
+                      ? 'border-emerald-200 bg-emerald-50 text-emerald-600 hover:bg-emerald-100' 
+                      : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-100/80 shadow-3xs'
+                  }
+                `}
+              >
+                <Database className="h-4.5 w-4.5 shrink-0" />
+              </button>
+
+              {/* Master Password Vault active lock status */}
+              {masterPasswordKey && (
                 <button
-                  key={item.id}
-                  onClick={() => handleNavigate(item.id)}
-                  className={`
-                    w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all cursor-pointer group
-                    ${
-                      isActive
-                        ? 'bg-zinc-800 text-sky-400 font-medium shadow-sm shadow-zinc-950/50'
-                        : 'text-zinc-400 hover:text-white hover:bg-zinc-800/40'
-                    }
-                  `}
+                  onClick={() => setMasterPasswordKey('')}
+                  title={lang === 'ar' ? 'قفل الخزنة' : 'Lock Credentials'}
+                  className="p-2 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-600 transition cursor-pointer flex items-center justify-center animate-pulse"
                 >
-                  <Icon className={`h-5 w-5 transition-transform duration-200 shrink-0 ${isActive ? 'scale-105' : 'group-hover:scale-102'}`} />
-                  <span>{item.label}</span>
+                  <Lock className="h-4.5 w-4.5 shrink-0" />
                 </button>
-              );
-            })}
-          </nav>
-        </div>
+              )}
 
-        {/* Sidebar Actions & Footer Footer metadata */}
-        <div className="space-y-4 pt-6 border-t border-zinc-805">
-          {/* Synced database configurations trigger */}
-          <button
-            onClick={() => setIsConnSetupOpen(true)}
-            className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg border text-xs font-bold transition cursor-pointer 
-              ${
-                isConnectedState 
-                  ? 'border-sky-900/40 bg-sky-950/10 hover:bg-sky-950/20 text-sky-400' 
-                  : 'border-zinc-800 bg-zinc-950 hover:bg-zinc-850 text-zinc-400 hover:text-zinc-200'
-              }
-            `}
-          >
-            <span className="flex items-center gap-2">
-              <Database className="h-4 w-4 text-sky-400 shrink-0" />
-              <span>{isConnectedState ? (lang === 'ar' ? 'قاعدة بيانات متصلة' : 'Cloud Sync On') : (lang === 'ar' ? 'ربط سحابي' : 'Connect Supabase')}</span>
-            </span>
-          </button>
+              {/* Dynamic Alert Notifications Panel */}
+              <AlertBell lang={lang} />
 
-          {/* Desktop Language Selector */}
-          <button
-            onClick={toggleLanguage}
-            className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg bg-zinc-800 border border-zinc-700/60 text-zinc-300 font-bold text-xs cursor-pointer hover:bg-zinc-750 transition"
-          >
-            <span className="flex items-center gap-2.5">
-              <Globe className="h-4 w-4 text-sky-450" />
-              <span>{lang === 'ar' ? 'English (LTR)' : 'العربية (RTL)'}</span>
-            </span>
-            <span className="font-mono text-[9px] uppercase font-bold text-zinc-400 bg-zinc-950 px-1.5 py-0.5 rounded">
-              {lang === 'ar' ? 'EN' : 'AR'}
-            </span>
-          </button>
+              {/* Global Lang Selector Toggle */}
+              <button
+                onClick={toggleLanguage}
+                className="inline-flex items-center justify-center gap-1 px-3 py-2 border border-slate-200 bg-white hover:bg-slate-50 rounded-xl text-xs font-extrabold text-slate-600 cursor-pointer shadow-3xs transition"
+              >
+                <Globe className="h-4 w-4 text-sky-600 shrink-0" />
+                <span>{lang === 'ar' ? 'English' : 'عربي'}</span>
+              </button>
+            </div>
 
-          {/* Secure Lock Indicator status block */}
-          {masterPasswordKey && (
-            <button
-              onClick={() => setMasterPasswordKey('')}
-              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg border border-red-950/20 bg-red-950/10 hover:bg-red-950/15 text-red-100 hover:text-red-300 font-medium text-xs cursor-pointer transition"
-            >
-              <Lock className="h-4 w-4 text-rose-500 shrink-0" />
-              <span>{lang === 'ar' ? 'قفل الخزنة البرمجية' : 'Lock Credentials'}</span>
-            </button>
-          )}
-
-          <div className="text-center md:text-left rtl:md:text-right px-2 space-y-1">
-            <p className="text-[9px] text-zinc-550 font-mono">
-              {lang === 'ar' ? 'قفل تشفير AES عالي الحماية' : 'Obfuscated cloud sync protection'}
-            </p>
-            <p className="text-[9px] text-zinc-600 font-mono">
-              drmartin2050@gmail.com
-            </p>
           </div>
         </div>
-      </aside>
 
-      {/* 3. MOBILE BOTTOM NAVIGATION BAR (Sticky Fixed Bottom HUD for ultra easy thumb reach) */}
-      <nav 
-        id="mobile-bottom-nav" 
-        className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-zinc-900/95 border-t border-zinc-800/90 backdrop-blur-lg flex items-center justify-around py-2 px-1 safe-bottom shadow-2xl"
-      >
-        {navItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = activeTab === item.id;
-          return (
-            <button
-              key={item.id}
-              onClick={() => handleNavigate(item.id)}
-              className="flex flex-col items-center justify-center py-1 flex-1 min-w-[55px] cursor-pointer"
-              style={{ minHeight: '48px' }} // Standard visual layout safety touch padding minimum limit
-            >
-              <div className={`p-1 rounded-xl transition-all duration-200 ${isActive ? 'text-sky-400 scale-110' : 'text-zinc-500 hover:text-zinc-300'}`}>
-                <Icon className="h-5.5 w-5.5" />
-              </div>
-              <span className={`text-[9px] mt-0.5 font-bold transition-colors duration-150 ${isActive ? 'text-sky-400' : 'text-zinc-500'}`}>
-                {item.label}
-              </span>
-            </button>
-          );
-        })}
-      </nav>
+        {/* Horizontal scrollable nav strip on smaller select viewports */}
+        <div className="lg:hidden w-full border-t border-slate-100 bg-white overflow-x-auto scrollbar-none flex items-center gap-1.5 px-3 py-2 select-none">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = activeTab === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => handleNavigate(item.id)}
+                className={`
+                  flex items-center gap-1 px-3 py-2 rounded-xl text-[11px] font-extrabold transition-all cursor-pointer whitespace-nowrap select-none
+                  ${
+                    isActive
+                      ? 'bg-sky-50 text-sky-600 shadow-xs'
+                      : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50'
+                  }
+                `}
+              >
+                <Icon className="h-3.5 w-3.5 shrink-0" />
+                <span>{item.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </header>
 
-      {/* 4. Main Dynamic App View Content Canvas */}
+      {/* Modern Bilingual News Ticker Component */}
+      <NewsTicker lang={lang} />
+
+      {/* Main Dynamic App View Content Canvas */}
       <main className="flex-1 flex flex-col min-w-0">
         
-        {/* Top Navbar HUD (desktop only) */}
-        <header id="desktop-hud" className="hidden md:flex items-center justify-between px-10 py-5 bg-transparent border-b border-zinc-900 shrink-0">
-          <div className="space-y-0.5">
-            <span className="text-[10px] font-semibold text-sky-500 font-mono tracking-widest uppercase">
-              {lang === 'ar' ? 'روافد بوابة المطور الشخصية' : 'CENTRAL MOBILE-OPTIMIZED HUBS'}
-            </span>
-            <h2 className="text-xl font-black text-white">
-              {activeTab === 'dashboard' && t.nav.dashboard}
-              {activeTab === 'resources' && t.nav.resources}
-              {activeTab === 'projects' && t.nav.projects}
-              {activeTab === 'secrets' && t.nav.secrets}
-              {activeTab === 'automation' && t.nav.automation}
-              {activeTab === 'calculator' && t.nav.calculator}
-              {activeTab === 'optimizer' && t.nav.optimizer}
-            </h2>
-          </div>
-
-          <div className="flex items-center gap-4">
-            {/* Supabase status header stat */}
-            <div className="flex items-center gap-5 text-xs text-zinc-400 bg-zinc-900/40 border border-zinc-800 px-4 py-2 rounded-xl">
-              <span className="font-semibold">{t.dashboard.totalProjects}: <strong className="text-white font-bold ml-1 font-mono">{projects.length}</strong></span>
-              <span className="h-3.5 w-px bg-zinc-800" />
-              <span className="font-semibold">{t.dashboard.secureSecrets}: <strong className="text-sky-450 font-bold ml-1 font-mono">{credentials.length}</strong></span>
+        {/* Page title display area below sticky header */}
+        <div className="max-w-7xl w-full mx-auto px-4 md:px-10 pt-6 pb-2">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-slate-200 pb-4">
+            <div>
+              <span className="text-[10px] font-bold text-sky-600 font-mono tracking-widest uppercase">
+                {lang === 'ar' ? 'بوابة التحكم' : 'PROTAL CENTRAL CONTROL'}
+              </span>
+              <h2 className="text-2xl font-black text-slate-800 mt-0.5">
+                {activeTab === 'dashboard' && t.nav.dashboard}
+                {activeTab === 'resources' && t.nav.resources}
+                {activeTab === 'projects' && t.nav.projects}
+                {activeTab === 'secrets' && t.nav.secrets}
+                {activeTab === 'emails' && t.nav.emails}
+                {activeTab === 'calculator' && t.nav.calculator}
+                {activeTab === 'optimizer' && t.nav.optimizer}
+                {activeTab === 'automation' && t.nav.automation}
+                {activeTab === 'expenses' && t.nav.expenses}
+              </h2>
+            </div>
+            
+            {/* Quick stats on top */}
+            <div className="flex items-center gap-4 mt-3 sm:mt-0 text-xs text-slate-500">
+              <span className="bg-slate-100 px-3 py-1.5 rounded-xl font-semibold">
+                {t.dashboard.totalProjects}: <strong className="text-slate-800 font-black ml-1 font-mono">{projects.length}</strong>
+              </span>
+              <span className="bg-slate-100 px-3 py-1.5 rounded-xl font-semibold">
+                {t.dashboard.secureSecrets}: <strong className="text-sky-600 font-black ml-1 font-mono">{credentials.length}</strong>
+              </span>
             </div>
           </div>
-        </header>
+        </div>
 
         {/* Core Canvas wrapper */}
         <div className="flex-1 overflow-y-auto px-4 md:px-10 py-6 max-w-7xl w-full mx-auto">
+
           <AnimatePresence mode="wait">
             {activeTab === 'dashboard' && (
               <DashboardView
@@ -574,14 +543,17 @@ export default function App() {
             )}
 
             {activeTab === 'secrets' && (
-              <SecretsView
-                key="secrets-view"
-                t={t.secrets}
-                credentials={credentials}
-                onAddCredential={handleAddCredential}
-                onDeleteCredential={handleDeleteCredential}
-                masterPasswordKey={masterPasswordKey}
-                setMasterPasswordKey={setMasterPasswordKey}
+              <SecretsManager
+                key="secrets-manager-view"
+                lang={lang}
+              />
+            )}
+
+            {activeTab === 'emails' && (
+              <EmailsView
+                key="emails-view"
+                t={t.emails}
+                lang={lang}
               />
             )}
 
@@ -607,6 +579,13 @@ export default function App() {
                 lang={lang}
               />
             )}
+
+            {activeTab === 'expenses' && (
+              <ExpenseTracker
+                key="expenses-view"
+                lang={lang}
+              />
+            )}
           </AnimatePresence>
         </div>
       </main>
@@ -620,32 +599,32 @@ export default function App() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsConnSetupOpen(false)}
-              className="absolute inset-0 bg-zinc-950/85 backdrop-blur-sm"
+              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
             />
 
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="relative w-full max-w-lg overflow-hidden rounded-2xl bg-zinc-900 border border-zinc-800 p-6 shadow-2xl text-zinc-300 z-10"
+              className="relative w-full max-w-lg overflow-hidden rounded-2xl bg-white border border-slate-205 p-6 shadow-xl text-slate-700 z-10"
             >
               <button
                 onClick={() => setIsConnSetupOpen(false)}
-                className="absolute right-4 top-4 text-zinc-500 hover:text-zinc-350"
+                className="absolute right-4 top-4 text-slate-400 hover:text-slate-650 cursor-pointer"
               >
                 <X className="h-5 w-5" />
               </button>
 
-              <div className="flex items-center gap-3 mb-5 border-b border-zinc-800 pb-3">
-                <Database className="h-6 w-6 text-emerald-400" />
-                <h3 className="text-lg font-black text-zinc-100">
+              <div className="flex items-center gap-3 mb-5 border-b border-slate-100 pb-3">
+                <Database className="h-6 w-6 text-sky-600 animate-pulse" />
+                <h3 className="text-lg font-black text-slate-800">
                   {lang === 'ar' ? 'إعدادات ربط Supabase السحابي' : 'Configure Supabase Cloud Link'}
                 </h3>
               </div>
 
-              <div className="p-3 text-xs bg-emerald-950/15 border border-emerald-900/35 text-emerald-400 rounded-lg space-y-1 mb-4 leading-relaxed">
-                <p className="font-bold">✓ 100% Cloud-Based Data Syncing</p>
-                <p className="opacity-80">
+              <div className="p-3.5 text-xs bg-sky-50 border border-sky-100/80 text-sky-750 rounded-xl space-y-1 mb-4 leading-relaxed font-semibold">
+                <p className="font-extrabold text-sky-800">✓ 100% Cloud-Based Data Syncing</p>
+                <p className="opacity-90">
                   {lang === 'ar' 
                     ? 'أدخل بيانات مشروعك السحابي لحفظ ومزامنة المشاريع، المصادر، المفاتيح والويبهوكس على قاعدة بيانات سحابية مجانية حقيقية.' 
                     : 'Provide your credentials to seamlessly read, write and delete projects and n8n servers cross-device on a persistent hosted cloud Postgres.'}
@@ -654,35 +633,35 @@ export default function App() {
 
               <form onSubmit={handleConnectSupabase} className="space-y-4">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-zinc-400 block">Supabase URL *</label>
+                  <label className="text-xs font-bold text-slate-500 block">Supabase URL *</label>
                   <input
                     type="url"
                     required
                     value={supabaseUrlInput}
                     onChange={(e) => setSupabaseUrlInput(e.target.value)}
                     placeholder="https://xyzabcdefghijklmopq.supabase.co"
-                    className="w-full text-zinc-200 bg-zinc-950 border border-zinc-800 rounded-lg p-3 outline-none text-sm focus:border-emerald-500 hover:border-zinc-755 transition font-mono"
+                    className="w-full text-slate-800 bg-slate-50 border border-slate-200 rounded-xl p-3 outline-none text-sm focus:border-sky-505 hover:border-slate-300 transition font-mono font-semibold"
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-zinc-400 block">Supabase Anon Public API Key *</label>
+                  <label className="text-xs font-bold text-slate-500 block">Supabase Anon Public API Key *</label>
                   <textarea
                     required
                     value={supabaseKeyInput}
                     onChange={(e) => setSupabaseKeyInput(e.target.value)}
                     placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSJ..."
                     rows={4}
-                    className="w-full text-zinc-200 bg-zinc-950 border border-zinc-800 rounded-lg p-3 outline-none text-xs focus:border-emerald-500 hover:border-zinc-755 transition font-mono"
+                    className="w-full text-slate-805 bg-slate-50 border border-slate-200 rounded-xl p-3 outline-none text-xs focus:border-sky-505 hover:border-slate-300 transition font-mono"
                   />
                 </div>
 
-                <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-zinc-800/60 mt-6">
+                <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-slate-100 mt-6">
                   {isConnectedState && (
                     <button
                       type="button"
                       onClick={handleDisconnectSupabase}
-                      className="w-full sm:w-auto px-4 py-2 rounded-lg bg-rose-950/40 border border-rose-900/40 text-red-400 hover:bg-rose-950/70 transition text-xs font-bold cursor-pointer"
+                      className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-slate-50 border border-rose-200 text-rose-600 hover:bg-rose-50 hover:border-rose-300 transition text-xs font-extrabold cursor-pointer"
                     >
                       {lang === 'ar' ? 'فصل/إلغاء التزامن' : 'Disconnect Sync'}
                     </button>
@@ -692,13 +671,13 @@ export default function App() {
                     <button
                       type="button"
                       onClick={() => setIsConnSetupOpen(false)}
-                      className="px-4 py-2.5 rounded-lg border border-zinc-800 bg-zinc-950 hover:bg-zinc-850 text-zinc-450 hover:text-white transition text-xs font-bold cursor-pointer"
+                      className="px-4 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-450 hover:text-slate-800 transition text-xs font-bold cursor-pointer"
                     >
                       {lang === 'ar' ? 'إلغاء' : 'Cancel'}
                     </button>
                     <button
                       type="submit"
-                      className="px-5 py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 font-bold text-white transition text-xs cursor-pointer shadow-emerald-950/40 shadow-md"
+                      className="px-5 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-555 font-bold text-white transition text-xs cursor-pointer border border-sky-650"
                     >
                       {lang === 'ar' ? 'حفظ وتفعيل' : 'Connect & Sync'}
                     </button>

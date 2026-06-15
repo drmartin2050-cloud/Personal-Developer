@@ -1,4 +1,4 @@
-export type ActiveTab = 'dashboard' | 'resources' | 'projects' | 'secrets' | 'automation' | 'calculator' | 'optimizer';
+export type ActiveTab = 'dashboard' | 'resources' | 'projects' | 'secrets' | 'emails' | 'automation' | 'calculator' | 'optimizer' | 'expenses';
 
 export type Language = 'ar' | 'en';
 
@@ -16,6 +16,7 @@ export interface ResourceItem {
   description: string;
   category: 'database' | 'social' | 'ai';
   url: string;
+  isUserAdded?: boolean;
 }
 
 export interface CredentialItem {
@@ -40,9 +41,11 @@ export interface LocalizationSchema {
     resources: string;
     projects: string;
     secrets: string;
+    emails: string;
     automation: string;
     calculator: string;
     optimizer: string;
+    expenses: string;
   };
   dashboard: {
     welcome: string;
@@ -186,6 +189,27 @@ export interface LocalizationSchema {
     sendN8nBtn: string;
     historyTitle: string;
     promptNoHistory: string;
+  };
+  emails: {
+    title: string;
+    subtitle: string;
+    addMainEmailBtn: string;
+    addAliasBtn: string;
+    mainEmailLabel: string;
+    aliasLabel: string;
+    platformLabel: string;
+    copySuccess: string;
+    copiedLabel: string;
+    copyBtn: string;
+    noEmailsYet: string;
+    modalTitleMain: string;
+    modalTitleAlias: string;
+    placeholderMainEmail: string;
+    placeholderAliasEmail: string;
+    placeholderPlatform: string;
+    saveBtn: string;
+    cancelBtn: string;
+    deleteBtn: string;
   };
   aiHelper: {
     floatingBtn: string;

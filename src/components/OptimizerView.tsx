@@ -1,17 +1,17 @@
 import React, { useState, useEffect } from "react";
-import { motion } from "motion/react";
+import { motion, AnimatePresence } from "motion/react";
 import { 
   Sparkles, 
-  ArrowRightLeft, 
   Copy, 
   Check, 
   Send, 
   Coins, 
-  CheckCircle2, 
   Trash2, 
   History, 
   TrendingUp, 
-  AlertTriangle 
+  ShieldAlert,
+  ArrowRight,
+  Sparkle
 } from "lucide-react";
 import { LocalizationSchema, Language } from "../types";
 import { countTokens } from "../lib/tokenCounter";
@@ -19,6 +19,7 @@ import { PRICING_TABLE, calculateCost } from "../lib/pricing";
 import { getExchangeRates, convertCurrency, formatCurrency, FALLBACK_RATES, ExchangeRates } from "../lib/currency";
 import { executeWithFailover, FailoverLogEntry } from "../utils/failover";
 import { getSupabaseClient } from "../utils/supabase";
+import { getActiveKey } from "../utils/vaultManager";
 
 interface PromptHistoryItem {
   id: string;
@@ -43,7 +44,10 @@ export default function OptimizerView({ t, lang }: OptimizerViewProps) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [copied, setCopied] = useState(false);
   const [failoverLogs, setFailoverLogs] = useState<FailoverLogEntry[]>([]);
-  const [selectedModel, setSelectedModel] = useState("gpt-4o"); // standard comparison
+  const [selectedModel, setSelectedModel] = useState("gpt-4o");
+
+  // Error/Success status message banners in UI
+  const [alertMessage, setAlertMessage] = useState<{ text: string; type: "error" | "success" } | null>(null);
 
   // Token counts and pricing calculations
   const [arabicTokens, setArabicTokens] = useState(0);
@@ -71,6 +75,11 @@ export default function OptimizerView({ t, lang }: OptimizerViewProps) {
   useEffect(() => {
     setEnglishTokens(countTokens(englishOptimized));
   }, [englishOptimized]);
+
+  const showAlert = (text: string, type: "error" | "success" = "success") => {
+    setAlertMessage({ text, type });
+    setTimeout(() => setAlertMessage(null), 4000);
+  };
 
   // Load history from Supabase if active, otherwise LocalStorage
   const loadHistory = async () => {
@@ -119,7 +128,6 @@ export default function OptimizerView({ t, lang }: OptimizerViewProps) {
     };
 
     let matchedEnglish = "";
-    // Check if user's prompt matches a known pattern
     for (const key of Object.keys(translationsGlossary)) {
       if (arabicPrompt.includes(key)) {
         matchedEnglish = translationsGlossary[key];
@@ -127,13 +135,26 @@ export default function OptimizerView({ t, lang }: OptimizerViewProps) {
       }
     }
 
-    // Default translation if no exact patterns match
     if (!matchedEnglish) {
       matchedEnglish = `System Directive: Optimize and execute following prompt context into a high-density, low-footprint English structure:\n"${arabicPrompt}"\n\nOptimized Output structure: Provide a clean, robust, multi-agent instruction system.`;
     }
 
-    // Attempt actual failover call to the user's n8n pipeline or helper
     let targetKeys = ["KEY_HEURISTIC_EXPIRED", "KEY_SECONDARY_AI_EXPIRED", "KEY_TERTIARY_SIMUL_VALID"];
+    
+    // Dynamic Secret Retrieval integration: Secure Vault-based Failover key checking
+    const provider = selectedModel.startsWith("gpt") ? "OpenAI" : 
+                     (selectedModel.startsWith("claude") ? "Anthropic" : "Google");
+    
+    try {
+      const activeKeyRes = await getActiveKey(provider, "API_KEY");
+      if (activeKeyRes.success && activeKeyRes.data) {
+        targetKeys = [activeKeyRes.data.decryptedValue, ...targetKeys];
+        console.log(`Successfully fetched encrypted secret from vault for platform: ${provider}. (ID: ${activeKeyRes.data.id})`);
+      }
+    } catch (vaultErr) {
+      console.warn("Vault integration retrieval had an exception, fallback to local heuristic keys:", vaultErr);
+    }
+
     const supabase = getSupabaseClient();
     if (supabase) {
       try {
@@ -145,7 +166,7 @@ export default function OptimizerView({ t, lang }: OptimizerViewProps) {
           }
         }
       } catch (e) {
-        // Safe to bypass
+        // Safe check
       }
     }
 
@@ -161,8 +182,6 @@ export default function OptimizerView({ t, lang }: OptimizerViewProps) {
         targetKeys
       );
 
-      setFailoverLogs(result.logs || []);
-
       if (result.success && result.response) {
         if (typeof result.response === "string") {
           finalOptimizedResult = result.response;
@@ -170,6 +189,7 @@ export default function OptimizerView({ t, lang }: OptimizerViewProps) {
           finalOptimizedResult = result.response.output || result.response.text || result.response.translated;
         }
       }
+      setFailoverLogs(result.logs || []);
     } catch (err) {
       console.warn("API direct failover request encountered network issue, utilizing premium local compiler.");
     }
@@ -193,7 +213,6 @@ export default function OptimizerView({ t, lang }: OptimizerViewProps) {
       created_at: new Date().toISOString(),
     };
 
-    // 1. Try saving to Supabase
     let savedToCloud = false;
     if (supabase) {
       try {
@@ -215,34 +234,33 @@ export default function OptimizerView({ t, lang }: OptimizerViewProps) {
       }
     }
 
-    // 2. Save locally
     const existingRaw = localStorage.getItem("prompt_optimizer_history");
     let localList: PromptHistoryItem[] = [];
     if (existingRaw) {
       try { localList = JSON.parse(existingRaw); } catch (e) {}
     }
-    const updatedLocal = [newItem, ...localList].slice(0, 50); // limit to last 50
+    const updatedLocal = [newItem, ...localList].slice(0, 50);
     localStorage.setItem("prompt_optimizer_history", JSON.stringify(updatedLocal));
 
     setHistoryList(updatedLocal);
     setIsProcessing(false);
+    showAlert(lang === "ar" ? "تم التحسين والترجمة بنجاح!" : "Successfully translated and optimized prompt structure!");
   };
 
-  // Copy output prompt
   const handleCopy = () => {
     navigator.clipboard.writeText(englishOptimized);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+    showAlert(lang === "ar" ? "تم نسخ الأمر الإنجليزي!" : "Copied optimized English prompt to clipboard!");
   };
 
-  // Send output prompt directly to an active web hook
   const handleSendToWebhook = async () => {
     const webhookUrl = localStorage.getItem("dev_hub_dyn_url") 
       ? `${localStorage.getItem("dev_hub_dyn_url")}/webhook/automation`
       : "";
 
     if (!webhookUrl) {
-      alert(lang === "ar" ? "برجاء توفير رابط ويبهوك n8n صالح أولاً في كابينة التحكم." : "Please configure an active n8n web hook endpoint in the controls panel first.");
+      showAlert(lang === "ar" ? "برجاء توفير رابط ويبهوك n8n صالح أولاً في كابينة التحكم." : "Please configure an active n8n web hook endpoint in the controls panel first.", "error");
       return;
     }
 
@@ -252,14 +270,13 @@ export default function OptimizerView({ t, lang }: OptimizerViewProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt: englishOptimized, source: "Portal Optimizer", date: new Date().toISOString() })
       });
-      alert(lang === "ar" ? "تم بنجاح إرسال الأمر المحسن والترجمة إلى ويبهوك n8n الجاري!" : "Successfully sent the English optimized response to the active n8n automation pipeline!");
+      showAlert(lang === "ar" ? "تم بنجاح إرسال الأمر المحسن والترجمة إلى ويبهوك n8n الجاري!" : "Successfully sent the English optimized response to the active n8n automation pipeline!");
     } catch (err) {
       console.error(err);
-      alert("Failed to reach targeted webhook endpoint.");
+      showAlert("Failed to reach targeted webhook endpoint.", "error");
     }
   };
 
-  // Delete log entry
   const handleDeleteLog = async (id: string) => {
     const updated = historyList.filter(item => item.id !== id);
     setHistoryList(updated);
@@ -273,7 +290,6 @@ export default function OptimizerView({ t, lang }: OptimizerViewProps) {
     }
   };
 
-  // Calculate costs under selected model paradigm
   const arabicCostUsd = calculateCost(selectedModel, arabicTokens, 0);
   const englishCostUsd = calculateCost(selectedModel, englishTokens, 0);
   const savedCostUsd = Math.max(0, arabicCostUsd - englishCostUsd);
@@ -285,89 +301,115 @@ export default function OptimizerView({ t, lang }: OptimizerViewProps) {
   const savingPercentage = arabicTokens > 0 ? Math.round(((arabicTokens - englishTokens)/arabicTokens) * 100) : 0;
 
   return (
-    <div id="optimizer-root" className="space-y-6 max-w-6xl mx-auto" dir={lang === "ar" ? "rtl" : "ltr"}>
+    <div id="optimizer-root" className="space-y-6 max-w-6xl mx-auto select-none" dir={lang === "ar" ? "rtl" : "ltr"}>
       {/* Intro Header */}
-      <div id="optimizer-banner" className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-zinc-950 via-slate-900 to-zinc-950 p-6 sm:p-8 border border-zinc-805/60">
-        <div className="absolute right-0 bottom-0 -mb-16 -mr-16 h-64 w-64 rounded-full bg-sky-500/10 blur-3xl animate-pulse" />
+      <div id="optimizer-banner" className="relative overflow-hidden rounded-3xl bg-white p-6 sm:p-8 border border-slate-200/80 shadow-3d-flat card-persp card-persp-hover">
+        <div className="absolute right-0 top-0 -mb-16 -mr-16 h-64 w-64 rounded-full bg-indigo-505/10 blur-3xl animate-pulse" />
         <div className="relative z-10 space-y-2">
-          <div className="inline-flex items-center gap-2 px-3 py-1 bg-sky-500/10 border border-sky-450/20 text-sky-400 text-xs font-mono font-bold rounded-full">
-            <Sparkles className="h-4 w-4 text-sky-400 animate-spin" style={{ animationDuration: "3s" }} />
+          <div className="inline-flex items-center gap-2 px-3 py-1 bg-indigo-50 border border-indigo-100 text-indigo-650 text-xs font-mono font-black rounded-full shadow-3xs uppercase">
+            <Sparkles className="h-4 w-4 text-indigo-600 animate-spin" style={{ animationDuration: "3s" }} />
             <span>{lang === "ar" ? "تحسين الأوامر والترجمة الموفرة" : "PROMPT FOOTPRINT REDUCER"}</span>
           </div>
-          <h1 id="opt-title" className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+          <h1 id="opt-title" className="text-2xl sm:text-3xl font-black text-slate-800 tracking-tight text-sans">
             {t.title}
           </h1>
-          <p id="opt-sub" className="text-sm text-zinc-400 max-w-2xl leading-relaxed">
+          <p id="opt-sub" className="text-sm text-slate-500 font-semibold max-w-2xl leading-relaxed">
             {t.subtitle}
           </p>
         </div>
       </div>
 
+      {/* Dynamic Alerts inside UI Panel */}
+      <AnimatePresence>
+        {alertMessage && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.98, y: -5 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.98 }}
+            className={`p-4 rounded-2xl text-xs font-black flex items-center gap-2 border shadow-sm ${
+              alertMessage.type === "error"
+                ? "bg-rose-50 border-rose-200 text-rose-600"
+                : "bg-emerald-50 border-emerald-250 text-emerald-700"
+            }`}
+          >
+            <ShieldAlert className="h-4.5 w-4.5 shrink-0" />
+            <span>{alertMessage.text}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Main Form Fields */}
       <div id="opt-main-layout" className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
-        {/* Input column */}
+        {/* Input column with 3D focus scale effect */}
         <div id="opt-inputs-panel" className="lg:col-span-6 space-y-6">
-          <div className="bg-zinc-950 border border-zinc-805 rounded-2xl p-6 space-y-4">
+          <div className="bg-white border border-slate-205 rounded-3xl p-6 space-y-4 shadow-3d-flat card-persp card-persp-hover">
             <div className="flex justify-between items-center">
-              <label htmlFor="arabic-prompt-input" className="text-sm font-bold text-zinc-200">
-                {t.arabPromptLabel}
+              <label htmlFor="arabic-prompt-input" className="text-sm font-black text-slate-800 uppercase tracking-wide flex items-center gap-1.5">
+                <Sparkle className="h-4 w-4 text-indigo-600 shrink-0" />
+                <span>{t.arabPromptLabel}</span>
               </label>
-              <span className="text-[10px] font-mono text-zinc-500 font-bold uppercase">
+              <span className="text-[10px] font-black font-mono text-indigo-600 bg-indigo-50 border border-indigo-100 px-2.5 py-0.5 rounded-lg">
                 {arabicTokens} {lang === "ar" ? "رمز" : "Tokens"}
               </span>
             </div>
 
+            {/* Main Textarea incorporating 3D focus scale/border hover animations */}
             <textarea
               id="arabic-prompt-input"
               value={arabicPrompt}
               onChange={(e) => setArabicPrompt(e.target.value)}
               placeholder={lang === "ar" ? "اكتب الأمر العربي الخاص بك هنا (مثال: اكتب لي تطبيق بلغة جافا سكربت)" : "Type your Arabic prompt here..."}
               rows={5}
-              className="w-full bg-zinc-90 w-full rounded-xl border border-zinc-800 bg-zinc-900/30 p-4 font-sans text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-sky-500/50 focus:ring-1 focus:ring-sky-500/20 transition-all leading-relaxed"
+              className="w-full text-slate-850 bg-slate-50 border border-slate-200 rounded-2xl p-4 font-sans text-sm placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:scale-[1.015] focus:shadow-indigo-500/10 focus:ring-1 focus:ring-indigo-500/10 transition-all duration-300 leading-relaxed font-semibold block"
             />
 
-            {/* Quick Helper presets for Arabic copywriters */}
-            <div className="space-y-1.5">
-              <span className="text-[10px] text-zinc-500 font-bold uppercase block">{lang === "ar" ? "نماذج اختبارية سريعة للتجربة:" : "Test Presets:"}</span>
+            {/* Quick Helper presets */}
+            <div className="space-y-1.5 pt-1">
+              <span className="text-[10px] text-slate-400 font-extrabold uppercase block">{lang === "ar" ? "نماذج اختبارية سريعة للتجربة:" : "Test Presets:"}</span>
               <div className="flex flex-wrap gap-2">
                 <button 
                   onClick={() => setArabicPrompt("أريد كود لإنشاء تطبيق مهام بسيط")}
-                  className="px-2.5 py-1 text-[11px] bg-zinc-900 rounded-lg hover:text-sky-400 text-zinc-400 border border-zinc-850 cursor-pointer"
+                  className="px-3 py-1.5 rounded-xl text-xs bg-white text-slate-600 border border-slate-200 cursor-pointer font-bold transition hover:text-indigo-600 hover:border-indigo-300"
                 >
                   {lang === "ar" ? "تطبيق مهام" : "Build Todo list"}
                 </button>
                 <button 
                   onClick={() => setArabicPrompt("اكتب كود بايثون متقدم لتحليل أسعار العملات الرقمية")}
-                  className="px-2.5 py-1 text-[11px] bg-zinc-900 rounded-lg hover:text-sky-400 text-zinc-400 border border-zinc-850 cursor-pointer"
+                  className="px-3 py-1.5 rounded-xl text-xs bg-white text-slate-600 border border-slate-200 cursor-pointer font-bold transition hover:text-indigo-600 hover:border-indigo-300"
                 >
                   {lang === "ar" ? "كود بايثون للتحليل" : "Crypto Python code"}
                 </button>
               </div>
             </div>
 
-            {/* Trigger Button */}
+            {/* Qwen gradient with glow effect button */}
             <button
               id="btn-optimize-trigger"
               onClick={handleOptimize}
               disabled={isProcessing || !arabicPrompt.trim()}
-              className={`w-full flex items-center justify-center gap-2 p-3.5 rounded-xl text-white font-extrabold text-sm transition-all shadow-lg ${
+              className={`w-full flex items-center justify-center gap-2 p-4 rounded-2xl text-white font-extrabold text-xs transition duration-200 border shadow-md select-none ${
                 isProcessing || !arabicPrompt.trim()
-                  ? "bg-zinc-800 text-zinc-500 cursor-not-allowed"
-                  : "bg-sky-600 hover:bg-sky-500 cursor-pointer shadow-sky-950/40"
+                  ? "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed shadow-none"
+                  : "hover:shadow-indigo-500/25 border-indigo-600 cursor-pointer text-white"
               }`}
+              style={{
+                background: (isProcessing || !arabicPrompt.trim()) 
+                  ? "" 
+                  : 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #06b6d4 100%)'
+              }}
             >
-              <Sparkles className={`h-4.5 w-4.5 ${isProcessing ? 'animate-spin' : ''}`} />
-              <span>{isProcessing ? (lang === "ar" ? "جاري الترجمة وإعادة الصياغة والتخضير..." : "Refactoring & pricing...") : t.buttonPrompt}</span>
+              <Sparkles className={`h-4.5 w-4.5 text-white ${isProcessing ? 'animate-spin' : ''}`} />
+              <span>{isProcessing ? (lang === "ar" ? "جاري الترجمة وإعادة الصياغة..." : "Optimizing structure...") : t.buttonPrompt}</span>
             </button>
 
             {failoverLogs.length > 0 && (
-              <div className="p-3 bg-zinc-900 rounded-xl border border-zinc-850 space-y-1">
-                <span className="text-[9px] font-mono font-bold text-sky-400 uppercase tracking-wider block">{lang === "ar" ? "مسار الفيل-أوفر النشط لتنفيذ الطلب:" : "Active Failover Webpath:"}</span>
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1 font-mono">
+                <span className="text-[9px] font-bold text-indigo-600 uppercase tracking-wide block">{lang === "ar" ? "مسار الفيل-أوفر النشط لتنفيذ الطلب:" : "Active Failover Webpath:"}</span>
                 {failoverLogs.map((log, i) => (
-                  <div key={i} className="flex items-center gap-1.5 text-[8px] font-mono text-zinc-400">
-                    <span className={`h-1.5 w-1.5 rounded-full ${log.status === "success" ? "bg-emerald-400" : "bg-red-400"}`} />
-                    <span>KeyIndex {log.keyIndex} ({log.maskedKey}) - <strong className={log.status === "success" ? "text-emerald-400" : "text-red-400"}>{log.status}</strong></span>
+                  <div key={i} className="flex items-center gap-1.5 text-[8px] text-slate-500">
+                    <span className={`h-1.5 w-1.5 rounded-full ${log.status === "success" ? "bg-emerald-500 animate-pulse" : "bg-rose-500"}`} />
+                    <span>KeyIndex {log.keyIndex} ({log.maskedKey}) - <strong className={log.status === "success" ? "text-emerald-600 font-bold" : "text-rose-600 font-bold"}>{log.status}</strong></span>
                   </div>
                 ))}
               </div>
@@ -375,14 +417,15 @@ export default function OptimizerView({ t, lang }: OptimizerViewProps) {
           </div>
         </div>
 
-        {/* Output comparison column */}
+        {/* Output comparison column with side-by-side structures */}
         <div id="opt-comparison-panel" className="lg:col-span-6 space-y-6">
-          <div className="bg-zinc-950 border border-zinc-805 rounded-2xl p-6 space-y-4">
+          <div className="bg-white border border-slate-205 rounded-3xl p-6 space-y-4 shadow-3d-flat card-persp card-persp-hover">
             <div className="flex justify-between items-center">
-              <label htmlFor="english-optimized-output" className="text-sm font-bold text-zinc-200">
-                {t.optimizedResultLabel}
+              <label htmlFor="english-optimized-output" className="text-sm font-black text-slate-800 uppercase tracking-wide flex items-center gap-1.5">
+                <Sparkles className="h-4.5 w-4.5 text-indigo-600" />
+                <span>{t.optimizedResultLabel}</span>
               </label>
-              <span className="text-[10px] font-mono text-zinc-500 font-bold uppercase">
+              <span className="text-[10px] font-black font-mono text-slate-600 bg-slate-50 border border-slate-200 px-2.5 py-0.5 rounded-lg">
                 {englishTokens} {lang === "ar" ? "رمز" : "Tokens"}
               </span>
             </div>
@@ -393,24 +436,24 @@ export default function OptimizerView({ t, lang }: OptimizerViewProps) {
               readOnly
               placeholder={lang === "ar" ? "الإنتاج الإنجليزي المحسن والمكثف سيظهر هنا عقب الموازنة..." : "Optimized English output appears here..."}
               rows={5}
-              className="w-full bg-zinc-90 w-full rounded-xl border border-zinc-800 bg-zinc-900 p-4 font-mono text-xs text-sky-300 leading-relaxed focus:outline-none"
+              className="w-full text-slate-800 bg-slate-50 border border-slate-200 rounded-2xl p-4 font-mono text-xs leading-relaxed focus:outline-none focus:border-indigo-505 select-all block h-[184px]"
             />
 
             {englishOptimized && (
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-3.5 pt-1">
                 <button
                   onClick={handleCopy}
-                  className="flex items-center justify-center gap-2 p-2.5 rounded-xl border border-zinc-800 bg-zinc-900 hover:bg-zinc-850 text-zinc-200 hover:text-white font-bold text-xs cursor-pointer transition"
+                  className="flex items-center justify-center gap-2 p-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 hover:text-indigo-600 hover:border-slate-300 text-slate-650 font-black text-xs cursor-pointer transition-colors shadow-3xs"
                 >
-                  {copied ? <Check className="h-4 w-4 text-emerald-400" /> : <Copy className="h-4 w-4 text-sky-400" />}
+                  {copied ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4 text-indigo-600" />}
                   <span>{copied ? (lang === "ar" ? "تم النسخ!" : "Copied!") : t.copyBtn}</span>
                 </button>
 
                 <button
                   onClick={handleSendToWebhook}
-                  className="flex items-center justify-center gap-2 p-2.5 rounded-xl border border-zinc-800 bg-zinc-900 hover:bg-zinc-850 text-zinc-200 hover:text-white font-bold text-xs cursor-pointer transition"
+                  className="flex items-center justify-center gap-2 p-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 hover:text-indigo-600 hover:border-slate-300 text-slate-650 font-black text-xs cursor-pointer transition-colors shadow-3xs"
                 >
-                  <Send className="h-4 w-4 text-indigo-400" />
+                  <Send className="h-4 w-4 text-indigo-555" />
                   <span>{t.sendN8nBtn}</span>
                 </button>
               </div>
@@ -419,25 +462,25 @@ export default function OptimizerView({ t, lang }: OptimizerViewProps) {
         </div>
       </div>
 
-      {/* Comparison and savings overview */}
+      {/* Comparison and savings overview in 3D side-by-side cards style */}
       {englishOptimized && (
         <motion.div 
           id="optimization-comparison-layout"
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-zinc-950 border border-zinc-805 rounded-2xl p-6 space-y-6"
+          className="bg-white border border-slate-205 rounded-3xl p-6 space-y-6 shadow-3d-flat card-persp"
         >
-          <div className="flex items-center justify-between border-b border-zinc-900 pb-3 flex-wrap gap-2">
-            <h3 className="text-md font-extrabold text-zinc-200 flex items-center gap-2">
-              <Coins className="h-4.5 w-4.5 text-sky-400" />
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3 flex-wrap gap-2">
+            <h3 className="text-sm font-black text-slate-80 tracking-tight flex items-center gap-2 uppercase">
+              <Coins className="h-4.5 w-4.5 text-indigo-600" />
               {t.compareTitle}
             </h3>
-            <div className="flex items-center gap-2">
-              <span className="text-[11px] text-zinc-500 font-bold">{lang === "ar" ? "طراز الحساب المالي:" : "Cost-evaluator model:"}</span>
+            <div className="flex items-center gap-2 text-xs font-bold">
+              <span className="text-slate-400 font-extrabold">{lang === "ar" ? "طراز الحساب المالي:" : "Cost-evaluator model:"}</span>
               <select
                 value={selectedModel}
                 onChange={(e) => setSelectedModel(e.target.value)}
-                className="bg-zinc-900 border border-zinc-800 text-xs text-zinc-300 p-1.5 rounded cursor-pointer font-semibold"
+                className="bg-slate-50 border border-slate-200 text-xs text-slate-800 p-2 rounded-xl cursor-pointer font-black"
               >
                 {Object.entries(PRICING_TABLE).map(([id, item]) => (
                   <option key={id} value={id}>{item.name}</option>
@@ -446,69 +489,69 @@ export default function OptimizerView({ t, lang }: OptimizerViewProps) {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Arabic Card */}
-            <div className="bg-zinc-900/30 border border-zinc-850 rounded-xl p-4 space-y-3">
-              <div className="flex items-center justify-between text-zinc-400 text-xs font-bold">
+            <div className="bg-slate-50/50 border border-slate-200 rounded-2xl p-4.5 space-y-3 shadow-3xs card-persp card-persp-hover">
+              <div className="flex items-center justify-between text-slate-500 text-xs font-black uppercase">
                 <span>{t.cardArabic}</span>
-                <span className="text-red-400 text-[10px] font-bold uppercase">{lang === "ar" ? "أقل كفاءة" : "Raw Prompt"}</span>
+                <span className="text-rose-600 text-[9px] font-black uppercase bg-rose-50 px-2 py-0.5 rounded-lg border border-rose-100 shadow-3xs">Raw Input</span>
               </div>
               <div className="flex justify-between items-end">
                 <div>
-                  <span className="text-xs text-zinc-500 block">{t.tokenCount}</span>
-                  <span className="text-xl font-mono font-extrabold text-white">{arabicTokens}</span>
+                  <span className="text-[10px] text-slate-400 uppercase font-black block">{t.tokenCount}</span>
+                  <span className="text-lg font-mono font-black text-slate-805">{arabicTokens}</span>
                 </div>
                 <div className="text-right">
-                  <span className="text-xs text-zinc-500 block">{t.costEstimated} (USD)</span>
-                  <span className="text-lg font-mono font-extrabold text-zinc-300">{formatCurrency(arabicConverted.USD, "USD", lang)}</span>
+                  <span className="text-[10px] text-slate-400 uppercase font-black block">{t.costEstimated} (USD)</span>
+                  <span className="text-base font-mono font-black text-slate-700">{formatCurrency(arabicConverted.USD, "USD", lang)}</span>
                 </div>
               </div>
-              <div className="border-t border-zinc-900 pt-2 text-[10px] font-mono text-zinc-500 flex justify-between">
-                <span>{lang === "ar" ? "الكلفة بالجنيه المصري:" : "EGP cost:"}</span>
-                <span className="font-bold text-zinc-400">{formatCurrency(arabicConverted.EGP, "EGP", lang)}</span>
+              <div className="border-t border-slate-100 pt-2 text-[10px] font-mono text-slate-500 flex justify-between font-black uppercase">
+                <span>EGP Cost:</span>
+                <span className="font-extrabold text-slate-700">{formatCurrency(arabicConverted.EGP, "EGP", lang)}</span>
               </div>
             </div>
 
             {/* English Card */}
-            <div className="bg-sky-500/5 border border-sky-500/20 rounded-xl p-4 space-y-3">
-              <div className="flex items-center justify-between text-sky-400 text-xs font-bold">
+            <div className="bg-indigo-50/20 border border-indigo-150 rounded-2xl p-4.5 space-y-3 shadow-3xs card-persp card-persp-hover">
+              <div className="flex items-center justify-between text-indigo-700 text-xs font-black uppercase">
                 <span>{t.cardEnglish}</span>
-                <span className="text-sky-450 text-[10px] font-bold uppercase">{lang === "ar" ? "محسن ومكثف" : "High Density"}</span>
+                <span className="text-indigo-650 text-[9px] font-black uppercase bg-indigo-50 px-2 py-0.5 rounded-lg border border-indigo-150 shadow-3xs">Optimized</span>
               </div>
               <div className="flex justify-between items-end">
                 <div>
-                  <span className="text-xs text-zinc-500 block">{t.tokenCount}</span>
-                  <span className="text-xl font-mono font-extrabold text-sky-400">{englishTokens}</span>
+                  <span className="text-[10px] text-slate-400 uppercase font-black block">{t.tokenCount}</span>
+                  <span className="text-lg font-mono font-black text-indigo-600">{englishTokens}</span>
                 </div>
                 <div className="text-right">
-                  <span className="text-xs text-zinc-500 block">{t.costEstimated} (USD)</span>
-                  <span className="text-lg font-mono font-extrabold text-sky-450">{formatCurrency(englishConverted.USD, "USD", lang)}</span>
+                  <span className="text-[10px] text-slate-400 uppercase font-black block">{t.costEstimated} (USD)</span>
+                  <span className="text-base font-mono font-black text-indigo-650">{formatCurrency(englishConverted.USD, "USD", lang)}</span>
                 </div>
               </div>
-              <div className="border-t border-zinc-900/60 pt-2 text-[10px] font-mono text-zinc-500 flex justify-between">
-                <span>{lang === "ar" ? "الكلفة بالجنيه المصري:" : "EGP cost:"}</span>
-                <span className="font-bold text-sky-400">{formatCurrency(englishConverted.EGP, "EGP", lang)}</span>
+              <div className="border-t border-indigo-100 pt-2 text-[10px] font-mono text-slate-500 flex justify-between font-black uppercase">
+                <span>EGP Cost:</span>
+                <span className="font-extrabold text-indigo-650">{formatCurrency(englishConverted.EGP, "EGP", lang)}</span>
               </div>
             </div>
 
             {/* Savings card */}
-            <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4 flex flex-col justify-between">
-              <div className="flex items-center justify-between text-emerald-400 text-xs font-bold">
+            <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4.5 flex flex-col justify-between shadow-3xs card-persp card-persp-hover">
+              <div className="flex items-center justify-between text-emerald-700 text-xs font-black uppercase">
                 <span>{t.savingsSectionTitle}</span>
-                <TrendingUp className="h-4.5 w-4.5 animate-bounce text-emerald-400" />
+                <TrendingUp className="h-4.5 w-4.5 animate-bounce text-emerald-600" />
               </div>
 
-              <div className="my-2 text-center">
-                <span className="text-[10px] font-mono text-emerald-500 font-bold uppercase tracking-widest block">{lang === "ar" ? "إجمالي التوفير الفعلي" : "NET SAVED"}</span>
-                <span className="text-2xl font-mono text-emerald-400 font-black tracking-tight block">
+              <div className="my-2.5 text-center">
+                <span className="text-[9px] font-mono text-emerald-600 font-extrabold uppercase tracking-widest block">NET PERCENTAGE SAVED</span>
+                <span className="text-3xl font-mono text-emerald-600 font-black tracking-tight block">
                   {savingPercentage}%
                 </span>
               </div>
 
-              <div className="border-t border-emerald-500/10 pt-2 text-[11px] text-emerald-300 font-bold leading-normal text-left sm:text-center">
+              <div className="border-t border-emerald-150 pt-2 text-[10px] text-emerald-700 font-black leading-relaxed text-center uppercase tracking-tight">
                 {lang === "ar" 
-                  ? `لقد وفرت ${arabicTokens - englishTokens} من الرموز (حوالي ${formatCurrency(savedConverted.EGP, "EGP", lang)}) بتبديلك للعربية بالإنجليزية!`
-                  : `You saved ${arabicTokens - englishTokens} tokens (worth ~${formatCurrency(savedConverted.EGP, "EGP", lang)}) by writing and tuning in English!`
+                  ? `لقد وفرت ${arabicPrompt ? (arabicTokens - englishTokens) : 0} من الرموز (حوالي ${formatCurrency(savedConverted.EGP, "EGP", lang)}) بتبديلك للعربية بالإنجليزية!`
+                  : `You saved ${arabicPrompt ? (arabicTokens - englishTokens) : 0} tokens (worth ~${formatCurrency(savedConverted.EGP, "EGP", lang)}) by writing and tuning in English!`
                 }
               </div>
             </div>
@@ -517,48 +560,49 @@ export default function OptimizerView({ t, lang }: OptimizerViewProps) {
       )}
 
       {/* History log panel */}
-      <div id="optimizer-history" className="bg-zinc-950 border border-zinc-805 rounded-2xl p-6 space-y-4">
-        <h3 className="text-md font-extrabold text-zinc-200 flex items-center gap-2 border-b border-zinc-900 pb-3">
-          <History className="h-4.5 w-4.5 text-zinc-450" />
+      <div id="optimizer-history" className="bg-white border border-slate-205 rounded-3xl p-6 space-y-4 shadow-3d-flat card-persp">
+        <h3 className="text-md font-black text-slate-800 flex items-center gap-2 border-b border-slate-100 pb-3">
+          <History className="h-4.5 w-4.5 text-slate-450 shrink-0" />
           {t.historyTitle}
         </h3>
 
         {historyList.length === 0 ? (
-          <p className="text-xs text-zinc-500 text-center py-6">
+          <p className="text-xs text-slate-400 font-bold text-center py-6">
             {t.promptNoHistory}
           </p>
         ) : (
-          <div className="space-y-3 max-h-[300px] overflow-y-auto scrollbar-thin">
+          <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
             {historyList.map((item) => (
-              <div key={item.id} className="p-3.5 bg-zinc-900 rounded-xl border border-zinc-850 flex items-start justify-between gap-4 text-xs">
+              <div key={item.id} className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 flex items-start justify-between gap-4 text-xs font-semibold">
                 <div className="space-y-2 flex-grow overflow-hidden">
                   <div className="flex items-center gap-3">
-                    <span className="text-[10px] font-mono text-zinc-500 font-bold">{new Date(item.created_at).toLocaleDateString()}</span>
-                    <span className="text-[9px] uppercase font-bold tracking-widest bg-emerald-500/15 border border-emerald-500/20 text-emerald-400 px-1.5 py-0.2 rounded">
+                    <span className="text-[10px] font-bold font-mono text-slate-400">{new Date(item.created_at).toLocaleDateString()}</span>
+                    <span className="text-[9px] uppercase font-black tracking-wider bg-emerald-50 border border-emerald-250 text-emerald-700 px-2 py-0.5 rounded-lg shadow-3xs">
                       {lang === "ar" ? `وفرت ${item.percent_saved}%` : `Saved ${item.percent_saved}%`}
                     </span>
                   </div>
 
                   <div className="space-y-1">
-                    <p className="text-zinc-400 font-semibold truncate"><strong className="text-[10px] text-zinc-500 uppercase">AR:</strong> {item.arabic_prompt}</p>
-                    <p className="text-sky-300 font-mono truncate"><strong className="text-[10px] text-zinc-500 uppercase font-sans">EN:</strong> {item.english_prompt}</p>
+                    <p className="text-slate-600 font-bold truncate"><strong className="text-[10px] text-slate-400 font-mono uppercase">AR:</strong> {item.arabic_prompt}</p>
+                    <p className="text-indigo-650 font-mono truncate"><strong className="text-[10px] text-slate-400 font-mono uppercase font-sans">EN:</strong> {item.english_prompt}</p>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex items-center gap-2 shrink-0 font-semibold select-none">
                   <button
                     onClick={() => {
                       setArabicPrompt(item.arabic_prompt);
                       setEnglishOptimized(item.english_prompt);
+                      showAlert(lang === "ar" ? "تم تحميل الأمر!" : "Loaded historical prompt parameters successfully!");
                     }}
-                    className="px-2.5 py-1.5 rounded-lg bg-zinc-950 border border-zinc-800 text-zinc-400 hover:text-white font-bold text-[10px] cursor-pointer"
+                    className="px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-600 hover:text-indigo-650 font-bold text-[10px] cursor-pointer shadow-3xs"
                   >
                     {lang === "ar" ? "تحميل" : "Load"}
                   </button>
 
                   <button
                     onClick={() => handleDeleteLog(item.id)}
-                    className="p-1.5 rounded-lg bg-zinc-950 border border-zinc-850 hover:bg-rose-500/10 text-zinc-500 hover:text-rose-400 transition cursor-pointer"
+                    className="p-1.5 rounded-xl bg-white border border-slate-100 hover:bg-rose-50 text-slate-400 hover:text-rose-600 transition cursor-pointer"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>

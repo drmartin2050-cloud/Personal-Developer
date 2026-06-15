@@ -126,7 +126,7 @@ export default function AIAssistantModal({ t, lang }: AIAssistantModalProps) {
     <>
       {/* Floating Action Button (Lower-Left of display layout for easy mobile thumb reach) */}
       <div 
-        className="fixed bottom-24 md:bottom-6 z-55 cursor-pointer select-none"
+        className="fixed bottom-24 md:bottom-6 z-50 cursor-pointer select-none"
         style={{ left: lang === 'ar' ? 'auto' : '1.5rem', right: lang === 'ar' ? '1.5rem' : 'auto' }}
       >
         <motion.button
@@ -134,7 +134,7 @@ export default function AIAssistantModal({ t, lang }: AIAssistantModalProps) {
           whileHover={{ scale: 1.08 }}
           whileTap={{ scale: 0.95 }}
           onClick={() => setIsOpen(true)}
-          className="h-14 w-14 rounded-full bg-sky-600 hover:bg-sky-500 text-white flex items-center justify-center shadow-lg shadow-sky-950/50 border border-sky-400/20 cursor-pointer relative"
+          className="h-14 w-14 rounded-full bg-sky-600 hover:bg-sky-555 text-white flex items-center justify-center shadow-lg border border-sky-505 cursor-pointer relative"
         >
           <MessageSquare className="h-6 w-6 animate-pulse" />
           <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5">
@@ -153,7 +153,7 @@ export default function AIAssistantModal({ t, lang }: AIAssistantModalProps) {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setIsOpen(false)}
-              className="absolute inset-0 bg-zinc-950/80 backdrop-blur-xs"
+              className="absolute inset-0 bg-slate-900/60 backdrop-blur-xs"
             />
 
             {/* Main Chat Modal Canvas */}
@@ -162,19 +162,19 @@ export default function AIAssistantModal({ t, lang }: AIAssistantModalProps) {
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: '100%', opacity: 0 }}
               transition={{ type: 'spring', damping: 25, stiffness: 350 }}
-              className="relative w-full max-w-lg bg-slate-900 border border-slate-800 rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden flex flex-col h-[75vh] sm:h-[550px] z-10 text-slate-100"
+              className="relative w-full max-w-lg bg-white border border-slate-200 rounded-t-2xl sm:rounded-2xl shadow-xl overflow-hidden flex flex-col h-[75vh] sm:h-[530px] z-10 text-slate-700"
             >
               {/* Header block with status light */}
-              <div className="px-5 py-4 bg-slate-950 border-b border-slate-800 flex items-center justify-between">
+              <div className="px-5 py-4 bg-white border-b border-slate-100 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="h-9 w-9 rounded-xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-450">
+                  <div className="h-9 w-9 rounded-xl bg-sky-50 border border-sky-100 flex items-center justify-center text-sky-600">
                     <Bot className="h-5 w-5" />
                   </div>
                   <div>
-                    <h3 className="font-extrabold text-sm text-slate-100">{t.modalTitle}</h3>
+                    <h3 className="font-extrabold text-sm text-slate-800">{t.modalTitle}</h3>
                     <div className="flex items-center gap-1">
-                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                      <span className="text-[10px] text-sky-400 font-mono font-bold uppercase tracking-wider">Failover On-duty</span>
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-550 animate-pulse" />
+                      <span className="text-[10px] text-sky-650 font-mono font-bold uppercase tracking-wide">Failover Active</span>
                     </div>
                   </div>
                 </div>
@@ -183,13 +183,13 @@ export default function AIAssistantModal({ t, lang }: AIAssistantModalProps) {
                   <button
                     onClick={clearConversation}
                     title={t.clearBtn}
-                    className="p-1.5 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-slate-900 transition"
+                    className="p-1.5 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-slate-50 transition cursor-pointer"
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
                   <button
                     onClick={() => setIsOpen(false)}
-                    className="p-1.5 rounded-lg text-slate-500 hover:text-slate-300 hover:bg-slate-900 transition"
+                    className="p-1.5 rounded-xl text-slate-400 hover:text-slate-650 hover:bg-slate-50 transition cursor-pointer"
                   >
                     <X className="h-5 w-5" />
                   </button>
@@ -197,21 +197,21 @@ export default function AIAssistantModal({ t, lang }: AIAssistantModalProps) {
               </div>
 
               {/* Chat messages viewer container */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-900/60 scrollbar-thin">
+              <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50/50 scrollbar-none flex flex-col">
                 {messages.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center h-full text-center p-6 space-y-3">
-                    <div className="h-12 w-12 rounded-full bg-sky-950/40 border border-sky-800/20 flex items-center justify-center text-sky-400 mb-2">
+                  <div className="flex flex-col items-center justify-center h-full text-center p-6 space-y-3 my-auto">
+                    <div className="h-12 w-12 rounded-full bg-sky-50 border border-sky-100 flex items-center justify-center text-sky-600 mb-2">
                       <Cpu className="h-6 w-6" />
                     </div>
-                    <p className="text-xs text-slate-400 max-w-sm leading-relaxed">
+                    <p className="text-xs text-slate-500 max-w-sm leading-relaxed font-bold">
                       {t.noMessages}
                     </p>
-                    <div className="p-3.5 bg-slate-950/60 border border-slate-800 rounded-xl max-w-xs text-left">
-                      <h4 className="text-[10px] font-bold text-sky-400 uppercase tracking-widest flex items-center gap-1.5 mb-1.5">
+                    <div className="p-3.5 bg-white border border-slate-200 rounded-xl max-w-xs text-left shadow-3xs">
+                      <h4 className="text-[10px] font-black text-sky-600 uppercase tracking-wide flex items-center gap-1.5 mb-1.5 font-mono">
                         <Key className="h-3 w-3" />
                         <span>Key rotation failover simulation</span>
                       </h4>
-                      <p className="text-[9px] text-slate-400 leading-normal">
+                      <p className="text-[9px] text-slate-450 leading-normal font-bold">
                         Triggers automatic key rotation logs on prompt requests.
                       </p>
                     </div>
@@ -225,34 +225,34 @@ export default function AIAssistantModal({ t, lang }: AIAssistantModalProps) {
                         className={`flex flex-col max-w-[85%] ${isAi ? 'self-start' : 'self-end'}`}
                         style={{ alignSelf: isAi ? 'flex-start' : 'flex-end' }}
                       >
-                        <span className="text-[9px] text-slate-500 mb-1 font-semibold">
+                        <span className="text-[9px] text-slate-450 mb-1 font-bold">
                           {isAi ? t.roleAi : t.roleUser} • {msg.timestamp}
                         </span>
                         
                         <div className={`p-3.5 rounded-2xl text-xs leading-relaxed border ${
                           isAi 
-                            ? 'bg-slate-950 border-slate-800 text-slate-200 rounded-tl-none' 
-                            : 'bg-sky-600 border-sky-500 text-white rounded-tr-none shadow-md shadow-sky-950/10'
+                            ? 'bg-slate-100 border-slate-200 text-slate-700 rounded-tl-none font-semibold' 
+                            : 'bg-sky-600 border-sky-650 text-white rounded-tr-none shadow-sm'
                         }`}>
                           {msg.content}
                         </div>
 
                         {/* Rendering logs of Key Rotations if AI response */}
                         {isAi && msg.failoverLogs && msg.failoverLogs.length > 0 && (
-                          <div className="mt-2 p-2 bg-slate-950/80 rounded-lg border border-slate-850 space-y-1">
-                            <span className="text-[8px] font-mono font-bold text-sky-400 tracking-wider uppercase block">
+                          <div className="mt-2 p-2 bg-slate-50 rounded-xl border border-slate-150 space-y-1">
+                            <span className="text-[8px] font-mono font-black text-sky-600 tracking-wider uppercase block">
                               {t.failoverStatus}
                             </span>
                             {msg.failoverLogs.map((log, idx) => (
-                              <div key={idx} className="flex items-center gap-1.5 text-[8px] font-mono text-slate-400">
+                              <div key={idx} className="flex items-center gap-1.5 text-[8px] font-mono text-slate-500 font-bold">
                                 {log.status === 'success' ? (
-                                  <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0" />
+                                  <CheckCircle2 className="h-3 w-3 text-emerald-550 shrink-0" />
                                 ) : (
                                   <AlertTriangle className="h-3 w-3 text-amber-500 shrink-0" />
                                 )}
                                 <span>
                                   Key {log.keyIndex} ({log.maskedKey}):{' '}
-                                  <strong className={log.status === 'success' ? 'text-emerald-400' : 'text-amber-500'}>
+                                  <strong className={log.status === 'success' ? 'text-emerald-700' : 'text-amber-600'}>
                                     {log.status.toUpperCase()}
                                   </strong>
                                 </span>
@@ -267,8 +267,8 @@ export default function AIAssistantModal({ t, lang }: AIAssistantModalProps) {
 
                 {/* Loading indicator */}
                 {isLoading && (
-                  <div className="flex items-center gap-2 text-xs text-slate-400 bg-slate-950/60 px-3.5 py-2.5 rounded-xl border border-slate-850 self-start animate-pulse max-w-[200px]">
-                    <RefreshCw className="h-3.5 w-3.5 animate-spin text-sky-400" />
+                  <div className="flex items-center gap-2 text-xs text-slate-500 bg-white px-3.5 py-2.5 rounded-xl border border-slate-205 self-start animate-pulse max-w-[200px] shadow-3xs font-bold">
+                    <RefreshCw className="h-3.5 w-3.5 animate-spin text-sky-600" />
                     <span>Executing failover...</span>
                   </div>
                 )}
@@ -276,16 +276,16 @@ export default function AIAssistantModal({ t, lang }: AIAssistantModalProps) {
 
               {/* Action Key Rotations Tracker Status HUD on active active messages */}
               {activeFailoverLogs.length > 0 && (
-                <div className="px-4 py-2 bg-slate-950/90 border-t border-slate-800/80 flex items-center justify-between text-[10px] font-mono text-slate-400 shrink-0">
-                  <span className="text-sky-400 font-bold uppercase tracking-wider text-[8px]">ACTIVE PIPELINE:</span>
+                <div className="px-4 py-2 bg-slate-50 border-t border-slate-150 flex items-center justify-between text-[10px] font-mono text-slate-550 shrink-0">
+                  <span className="text-sky-650 font-black uppercase tracking-wider text-[8px]">ACTIVE PIPELINE:</span>
                   <div className="flex gap-2">
                     {activeFailoverLogs.map((log, i) => (
                       <span 
                         key={i} 
-                        className={`px-1.5 py-0.2 rounded font-bold border ${
+                        className={`px-1.5 py-0.2 rounded font-bold border text-[9px] ${
                           log.status === 'success' 
-                            ? 'bg-emerald-950/20 border-emerald-900/40 text-emerald-400' 
-                            : 'bg-amber-950/20 border-amber-900/40 text-amber-500 animate-pulse'
+                            ? 'bg-emerald-50 border-emerald-200 text-emerald-700' 
+                            : 'bg-amber-50 border-amber-250 text-amber-700 animate-pulse'
                         }`}
                       >
                         K{log.keyIndex}
@@ -296,21 +296,21 @@ export default function AIAssistantModal({ t, lang }: AIAssistantModalProps) {
               )}
 
               {/* Text Input area */}
-              <form onSubmit={handleSendMessage} className="p-3.5 bg-slate-950 border-t border-slate-800 shrink-0 flex gap-2">
+              <form onSubmit={handleSendMessage} className="p-3.5 bg-white border-t border-slate-105 shrink-0 flex gap-2">
                 <input
                   type="text"
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
                   placeholder={t.placeholder}
-                  className="flex-grow text-xs text-slate-100 bg-slate-900 border border-slate-805 rounded-xl px-4 py-3 outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/20 placeholder:text-slate-600 transition"
+                  className="flex-grow text-xs text-slate-800 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:border-sky-505 placeholder:text-slate-400 transition font-semibold"
                 />
                 <button
                   type="submit"
                   disabled={!prompt.trim() || isLoading}
                   className={`h-11 w-11 rounded-xl flex items-center justify-center text-white transition shrink-0 cursor-pointer ${
                     !prompt.trim() || isLoading 
-                      ? 'bg-slate-800 text-slate-500 cursor-not-allowed' 
-                      : 'bg-sky-600 hover:bg-sky-500 hover:scale-102 shadow-md shadow-sky-950/30'
+                      ? 'bg-slate-50 text-slate-350 cursor-not-allowed border border-slate-200' 
+                      : 'bg-sky-600 hover:bg-sky-555 border border-sky-650 shadow-xs'
                   }`}
                 >
                   <Send className="h-4.5 w-4.5" />
