@@ -26,9 +26,10 @@ googleAuthProvider.addScope('https://www.googleapis.com/auth/drive');
 googleAuthProvider.addScope('https://www.googleapis.com/auth/calendar');
 googleAuthProvider.addScope('https://www.googleapis.com/auth/gmail.modify');
 
-// Test Connection to Firestore
-async function testConnection() {
+// Lazy Test Connection to Firestore (Disabled by default to avoid eager/noisy console logs if default DB is not provisioned)
+export async function testConnection() {
   try {
+    const { doc, getDocFromServer } = await import('firebase/firestore');
     await getDocFromServer(doc(db, 'test', 'connection'));
   } catch (error) {
     if (error instanceof Error) {
@@ -36,7 +37,6 @@ async function testConnection() {
     }
   }
 }
-testConnection();
 
 // Cache Google OAuth Access Token in Memory in line with security directives
 let cachedAccessToken: string | null = null;
