@@ -105,6 +105,41 @@ class ErrorBoundary extends React.Component<Props, State> {
   }
 }
 
+// Environment variables verification on startup
+const verifyEnvironment = () => {
+  const windowEnvBigSpace = (window as any).__ENV || {};
+  const windowEnv = (window as any).env || {};
+  const metaEnv = (import.meta as any).env || {};
+
+  console.log('============= [Sentry HF Space Diagnostics] =============');
+  console.log('Checking Hugging Face secrets runtime availability...');
+  
+  const keys = ['GROQ_API_KEY', 'GEMINI_API_KEY', 'OPENAI_API_KEY', 'DEEPSEEK_API_KEY'];
+  keys.forEach(k => {
+    const val = windowEnvBigSpace[k] || windowEnv[k] || metaEnv[`VITE_${k}`] || '';
+    const cleanVal = typeof val === 'string' ? val.trim() : '';
+    const isPresent = !!cleanVal;
+    const isPlaceholder = cleanVal.includes('%%') || cleanVal.includes('placeholder');
+    
+    if (isPresent) {
+      if (isPlaceholder) {
+        console.warn(`⚠️ [Sentry Diagnostic] ${k} is set but contains placeholder value: "${cleanVal}"`);
+      } else {
+        console.log(`✅ [Sentry Diagnostic] ${k}: LOADED successfully (starts with "${cleanVal.substring(0, 4)}...", length: ${cleanVal.length})`);
+      }
+    } else {
+      console.error(`❌ [Sentry Diagnostic] ${k}: MISSING or empty!`);
+    }
+  });
+  console.log('==========================================================');
+};
+
+try {
+  verifyEnvironment();
+} catch (e) {
+  console.error('[Sentry Diagnostic] Failed to execute startup verification:', e);
+}
+
 createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <ErrorBoundary>
