@@ -14,12 +14,16 @@ import {
   Sparkles,
   Mail,
   Coins,
-  Brain
+  Brain,
+  AlertTriangle
 } from 'lucide-react';
 import { ActiveTab, Language, Project, CredentialItem } from './types';
 import { locales } from './locales';
 import { encryptText } from './utils/crypto';
 import { isSupabaseConnected, getSupabaseClient, initializeDynamicSupabase } from './utils/supabase';
+import { getEnvStatus, areCriticalEnvsLoaded } from './utils/envValidator';
+import ConnectionTest from './components/ConnectionTest';
+import ProductionChecklist from './components/ProductionChecklist';
 
 // Subcomponents
 import DashboardView from './components/DashboardView';
@@ -30,7 +34,8 @@ import AutomationView from './components/AutomationView';
 import CalculatorView from './components/CalculatorView';
 import OptimizerView from './components/OptimizerView';
 import EmailsView from './components/EmailsView';
-import AIAssistantModal from './components/AIAssistantModal';
+import AIAssistant from './components/AIAssistant';
+import { FloatingAIButton } from './components/FloatingAIButton';
 import NewsTicker from './components/NewsTicker';
 import AlertBell from './components/AlertBell';
 import ExpenseTracker from './components/ExpenseTracker';
@@ -73,6 +78,7 @@ export default function App() {
 
   // Active Screen Selector
   const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
+  const [isAIAssistantOpen, setIsAIAssistantOpen] = useState(false);
 
   // Sidebar visibility on mobile screens
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -93,6 +99,12 @@ export default function App() {
     return sessionStorage.getItem('dev_hub_master_token') || '';
   });
 
+  // Diagnostics & Sentry state toggles
+  const [isDiagnosticsModalOpen, setIsDiagnosticsModalOpen] = useState(false);
+  const [diagnosticsActiveTab, setDiagnosticsActiveTab] = useState<'tests' | 'checklist'>('tests');
+  const [envDiagnosticsPassed, setEnvDiagnosticsPassed] = useState(false);
+  const [showSetupReminder, setShowSetupReminder] = useState(false);
+
   // Check state and trigger dynamic initializations
   useEffect(() => {
     const setupAndCheck = () => {
@@ -103,6 +115,13 @@ export default function App() {
         initializeDynamicSupabase(storedUrl, storedKey);
       }
       setIsConnectedState(isSupabaseConnected());
+
+      // 2. Automated Env Diagnose Check on startup
+      const critLoaded = areCriticalEnvsLoaded();
+      setEnvDiagnosticsPassed(critLoaded);
+      if (!critLoaded) {
+        setShowSetupReminder(true);
+      }
     };
     setupAndCheck();
   }, []);
@@ -428,6 +447,25 @@ export default function App() {
                 </button>
               )}
 
+              {/* Sentry Active Diagnostic Status Pill */}
+              <button
+                id="btn-trigger-diagnostics-console"
+                onClick={() => setIsDiagnosticsModalOpen(true)}
+                title={lang === 'ar' ? 'فحص جاهزية Sentry' : 'Sentry Diagnostic Console'}
+                className={`px-3 py-1.5 rounded-xl border text-[10px] font-black tracking-tight uppercase flex items-center gap-1.5 transition duration-200 cursor-pointer shadow-3xs shrink-0
+                  ${
+                    envDiagnosticsPassed 
+                      ? 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100' 
+                      : 'border-yellow-200 bg-yellow-50 text-yellow-700 hover:bg-yellow-100 animate-pulse'
+                  }
+                `}
+              >
+                <span className={`h-2 w-2 rounded-full ${envDiagnosticsPassed ? 'bg-emerald-500' : 'bg-yellow-500 animate-pulse'}`} />
+                <span>
+                  {envDiagnosticsPassed ? (lang === 'ar' ? 'جاهز كلياً' : 'SENTRY PROD OK') : (lang === 'ar' ? 'يتطلب فحص البيئة' : 'SENTRY SETUP NEEDED')}
+                </span>
+              </button>
+
               {/* Dynamic Alert Notifications Panel */}
               <AlertBell lang={lang} />
 
@@ -700,8 +738,149 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {/* Floating AI Helper Assistant */}
-      <AIAssistantModal t={t.aiHelper} lang={lang} />
+      {/* 2. Sentry Active Diagnostic & Production Checklist Modal Console */}
+      <AnimatePresence>
+        {isDiagnosticsModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsDiagnosticsModalOpen(false)}
+              className="absolute inset-0 bg-slate-950/80 backdrop-blur-md"
+            />
+
+            <motion.div
+              initial={{ scale: 0.95, y: 15, opacity: 0 }}
+              animate={{ scale: 1, y: 0, opacity: 1 }}
+              exit={{ scale: 0.95, y: 15, opacity: 0 }}
+              className="relative w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-3xl bg-slate-950 border border-slate-800 p-6 md:p-8 shadow-2xl z-10 text-slate-200"
+            >
+              <button
+                onClick={() => setIsDiagnosticsModalOpen(false)}
+                className="absolute right-5 top-5 text-slate-400 hover:text-slate-200 cursor-pointer p-1.5 rounded-full bg-slate-900 border border-slate-800"
+              >
+                <X className="h-5 w-5" />
+              </button>
+
+              <div className="flex items-center gap-2 pb-4 border-b border-slate-800 mb-6">
+                <ShieldCheck className="h-6 w-6 text-indigo-400 animate-pulse" />
+                <div>
+                  <h3 className="text-xl font-black text-white">
+                    {lang === 'ar' ? 'منصة الفحوصات وجاهزية النشر (Sentry Console)' : 'Sentry AI Diagnostics & Deploy HUD'}
+                  </h3>
+                  <p className="text-[10px] text-slate-400 uppercase tracking-widest font-mono">
+                    System Autopilot Probes & Checklist Dashboard
+                  </p>
+                </div>
+              </div>
+
+              {/* Tab Selector buttons */}
+              <div className="flex border-b border-slate-800 mb-6 gap-2">
+                <button
+                  onClick={() => setDiagnosticsActiveTab('tests')}
+                  className={`px-4 py-2.5 font-bold text-xs transition duration-200 border-b-2 rounded-t-xl
+                    ${
+                      diagnosticsActiveTab === 'tests' 
+                        ? 'border-cyan-400 text-cyan-400 bg-cyan-950/20' 
+                        : 'border-transparent text-slate-400 hover:text-slate-250'
+                    }
+                  `}
+                >
+                  {lang === 'ar' ? '🔍 لوحة مقارنة وفحص الاتصالات' : '🔍 System Connection Probes'}
+                </button>
+                <button
+                  onClick={() => setDiagnosticsActiveTab('checklist')}
+                  className={`px-4 py-2.5 font-bold text-xs transition duration-200 border-b-2 rounded-t-xl
+                    ${
+                      diagnosticsActiveTab === 'checklist' 
+                        ? 'border-cyan-400 text-cyan-400 bg-cyan-950/20' 
+                        : 'border-transparent text-slate-400 hover:text-slate-250'
+                    }
+                  `}
+                >
+                  {lang === 'ar' ? '🚀 قائمة جاهزية النشر النهائي' : '🚀 Production Readiness Checklist'}
+                </button>
+              </div>
+
+              {/* Rendering selected view */}
+              <div className="py-2">
+                {diagnosticsActiveTab === 'tests' ? (
+                  <ConnectionTest lang={lang} />
+                ) : (
+                  <ProductionChecklist lang={lang} />
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* 3. Setup Reminder Warning Banner overlay */}
+      <AnimatePresence>
+        {showSetupReminder && !envDiagnosticsPassed && (
+          <div className="fixed bottom-6 left-6 z-50 max-w-sm">
+            <motion.div
+              initial={{ x: -100, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: -100, opacity: 0 }}
+              className="p-5 rounded-2xl bg-slate-900/95 border border-yellow-500/20 backdrop-blur-xl shadow-2xl space-y-3 text-slate-200"
+            >
+              <div className="flex items-start gap-3">
+                <div className="p-1.5 rounded-lg bg-yellow-500/10 text-yellow-500 mt-0.5">
+                  <AlertTriangle className="h-5 w-5 animate-bounce" />
+                </div>
+                <div className="space-y-0.5">
+                  <h4 className="text-xs font-black text-yellow-400 uppercase">
+                    {lang === 'ar' ? 'تحذير: متغيرات البيئة مفقودة' : 'Warning: Missing Secrets config'}
+                  </h4>
+                  <p className="text-[10px] text-slate-400 leading-relaxed">
+                    {lang === 'ar' 
+                      ? 'تم رصد نقص في مفاتيح الاستدعاء المطلوبة للذكاء والربط السحابي في مستودع Hugging Face.' 
+                      : 'Some critical production variables are not fully resolved. Sentry automatic failovers are operational.'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex gap-2 justify-end text-[10px] font-bold">
+                <button
+                  onClick={() => setShowSetupReminder(false)}
+                  className="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-700"
+                >
+                  {lang === 'ar' ? 'تخطي' : 'Dismiss'}
+                </button>
+                <button
+                  onClick={() => {
+                    setIsDiagnosticsModalOpen(true);
+                    setDiagnosticsActiveTab('tests');
+                  }}
+                  className="px-3 py-1.5 rounded-lg bg-yellow-600 hover:bg-yellow-500 text-slate-900 font-extrabold"
+                >
+                  {lang === 'ar' ? 'حل الأخطاء ومتابعة' : 'Diagnose & Sentry Fix'}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Floating AI Helper Sentry Controller */}
+      <FloatingAIButton 
+        onClick={() => setIsAIAssistantOpen(!isAIAssistantOpen)} 
+        isOpen={isAIAssistantOpen} 
+        lang={lang} 
+      />
+
+      <AIAssistant 
+        activeTab={activeTab} 
+        lang={lang} 
+        onSetLang={(newLang) => {
+          setLang(newLang);
+          localStorage.setItem('dev_hub_lang', newLang);
+        }} 
+        isOpen={isAIAssistantOpen} 
+        onClose={() => setIsAIAssistantOpen(false)} 
+      />
     </div>
   );
 }

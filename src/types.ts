@@ -227,3 +227,32 @@ export interface LocalizationSchema {
     roleAi: string;
   };
 }
+
+export interface AdvancedErrorInfo {
+  id: string;
+  message: string;
+  statusCode?: number;
+  timestamp: string;
+  provider: string;
+  maskedKey: string;
+  payload?: any;
+  responseBody?: string;
+  severity: 'critical' | 'warning' | 'info';
+  userApproved?: boolean;
+}
+
+export interface RepairLog {
+  id: string;
+  timestamp: string;
+  issue: string;
+  actionTaken: string;
+  status: 'repaired' | 'manual_required' | 'skipped' | 'failed';
+  approved?: boolean;
+}
+
+export interface AppEnvironment {
+  type: 'localhost' | 'huggingface' | 'github_pages' | 'unknown';
+  isDevelopment: boolean;
+  proxyActive: boolean;
+  allowedOrigins: string[];
+}
