@@ -3,13 +3,17 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 // Load credentials optionally from env variables
 const ENV_SUPABASE_URL = 
   ((window as any).__ENV?.VITE_SUPABASE_URL as string) || 
+  ((window as any).__ENV?.SUPABASE_URL as string) || 
   ((import.meta as any).env?.VITE_SUPABASE_URL as string) || 
   ((window as any).env?.VITE_SUPABASE_URL as string) || 
+  ((window as any).env?.SUPABASE_URL as string) || 
   '';
 const ENV_SUPABASE_ANON_KEY = 
   ((window as any).__ENV?.VITE_SUPABASE_ANON_KEY as string) || 
+  ((window as any).__ENV?.SUPABASE_ANON_KEY as string) || 
   ((import.meta as any).env?.VITE_SUPABASE_ANON_KEY as string) || 
   ((window as any).env?.VITE_SUPABASE_ANON_KEY as string) || 
+  ((window as any).env?.SUPABASE_ANON_KEY as string) || 
   '';
 
 let activeClient: SupabaseClient | null = null;

@@ -31,4 +31,17 @@ EXPOSE 7860
 
 # On container startup, dynamically extract runtime secrets assigned in HF "Settings -> Variables and secrets"
 # and write them to dist/env-config.js. This exposes them to window.__ENV in the browser without baking sensitive keys in the static build.
-CMD ["sh", "-c", "echo \"window.__ENV = { GROQ_API_KEY: '${GROQ_API_KEY}', GEMINI_API_KEY: '${GEMINI_API_KEY}', OPENAI_API_KEY: '${OPENAI_API_KEY}', DEEPSEEK_API_KEY: '${DEEPSEEK_API_KEY}' }; window.env = window.__ENV;\" > dist/env-config.js && serve -s dist -l 7860"]
+CMD ["sh", "-c", "echo \"window.__ENV = { \
+GROQ_API_KEY: '${GROQ_API_KEY}', \
+VITE_GROQ_API_KEY: '${VITE_GROQ_API_KEY}', \
+GEMINI_API_KEY: '${GEMINI_API_KEY}', \
+VITE_GEMINI_API_KEY: '${VITE_GEMINI_API_KEY}', \
+OPENAI_API_KEY: '${OPENAI_API_KEY}', \
+VITE_OPENAI_API_KEY: '${VITE_OPENAI_API_KEY}', \
+DEEPSEEK_API_KEY: '${DEEPSEEK_API_KEY}', \
+VITE_DEEPSEEK_API_KEY: '${VITE_DEEPSEEK_API_KEY}', \
+SUPABASE_URL: '${SUPABASE_URL}', \
+VITE_SUPABASE_URL: '${VITE_SUPABASE_URL}', \
+SUPABASE_ANON_KEY: '${SUPABASE_ANON_KEY}', \
+VITE_SUPABASE_ANON_KEY: '${VITE_SUPABASE_ANON_KEY}' \
+}; window.env = window.__ENV;\" > dist/env-config.js && serve -s dist -l 7860"]

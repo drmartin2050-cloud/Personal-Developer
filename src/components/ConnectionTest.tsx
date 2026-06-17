@@ -39,7 +39,8 @@ export default function ConnectionTest({ lang = 'ar' }: { lang?: 'ar' | 'en' }) 
   };
 
   const getEnvValue = (name: string): string => {
-    return (window as any).__ENV?.[name] || (window as any).env?.[name] || (import.meta as any).env?.[name] || '';
+    const altName = name.replace('VITE_', '');
+    return (window as any).__ENV?.[name] || (window as any).__ENV?.[altName] || (window as any).env?.[name] || (window as any).env?.[altName] || (import.meta as any).env?.[name] || (import.meta as any).env?.[altName] || '';
   };
 
   const runSupabaseTest = async (): Promise<TestResult> => {

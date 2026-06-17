@@ -51,7 +51,8 @@ export const DiagnosticsDebugView: React.FC<{ lang: 'en' | 'ar' }> = ({ lang }) 
       );
 
       const getEnvVar = (name: string) => {
-        return (window as any).__ENV?.[name] || (window as any).env?.[name] || (import.meta as any).env?.[name];
+        const altName = name.replace('VITE_', '');
+        return (window as any).__ENV?.[name] || (window as any).__ENV?.[altName] || (window as any).env?.[name] || (window as any).env?.[altName] || (import.meta as any).env?.[name] || (import.meta as any).env?.[altName];
       };
 
       // Check environment variables if possible
@@ -71,7 +72,8 @@ export const DiagnosticsDebugView: React.FC<{ lang: 'en' | 'ar' }> = ({ lang }) 
       addLog('info', lang === 'ar' ? 'بدء فحص اتصال قاعدة بيانات Supabase...' : 'Initiating Supabase connection handshake...');
       
       const getEnvVar = (name: string) => {
-        return (window as any).__ENV?.[name] || (window as any).env?.[name] || (import.meta as any).env?.[name];
+        const altName = name.replace('VITE_', '');
+        return (window as any).__ENV?.[name] || (window as any).__ENV?.[altName] || (window as any).env?.[name] || (window as any).env?.[altName] || (import.meta as any).env?.[name] || (import.meta as any).env?.[altName];
       };
       
       const supabaseUrl = getEnvVar('VITE_SUPABASE_URL');
