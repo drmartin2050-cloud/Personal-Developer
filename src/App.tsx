@@ -15,15 +15,18 @@ import {
   Mail,
   Coins,
   Brain,
-  AlertTriangle
+  AlertTriangle,
+  Languages
 } from 'lucide-react';
 import { ActiveTab, Language, Project, CredentialItem } from './types';
 import { locales } from './locales';
 import { encryptText } from './utils/crypto';
 import { isSupabaseConnected, getSupabaseClient, initializeDynamicSupabase } from './utils/supabase';
 import { getEnvStatus, areCriticalEnvsLoaded } from './utils/envValidator';
+import { autoRegisterEnvironmentSecrets } from './utils/vaultManager';
 import ConnectionTest from './components/ConnectionTest';
 import ProductionChecklist from './components/ProductionChecklist';
+import CommandPalette from './components/CommandPalette';
 
 // Subcomponents
 import DashboardView from './components/DashboardView';
@@ -40,6 +43,7 @@ import NewsTicker from './components/NewsTicker';
 import AlertBell from './components/AlertBell';
 import ExpenseTracker from './components/ExpenseTracker';
 import AIAgentDashboard from './components/AIAgentDashboard';
+import PromptTranslator from './components/PromptTranslator';
 
 // Pre-seeded local projects for starting visual feedback
 const SEED_PROJECTS: Project[] = [
@@ -93,6 +97,7 @@ export default function App() {
   const [projects, setProjects] = useState<Project[]>(SEED_PROJECTS);
   const [credentials, setCredentials] = useState<CredentialItem[]>([]);
   const [isAddProjectModalOpen, setIsAddProjectModalOpen] = useState(false);
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
 
   // Master Secrets Security Locking Key (default 'Eissa2026' for demo decryption)
   const [masterPasswordKey, setMasterPasswordKey] = useState<string>(() => {
@@ -122,8 +127,31 @@ export default function App() {
       if (!critLoaded) {
         setShowSetupReminder(true);
       }
+
+      // 3. Auto register environment variables / IPs / secret keys in the secure vault automatically
+      autoRegisterEnvironmentSecrets()
+        .then(({ registeredKeys, registeredDbs }) => {
+          if (registeredKeys.length > 0 || registeredDbs.length > 0) {
+            console.log(`[Vault Startup Register] Automatically secured discoveries into vault: Keys: ${registeredKeys.join(', ')} | DBs: ${registeredDbs.join(', ')}`);
+          }
+        })
+        .catch((e) => {
+          console.error('[Vault Startup Register] Self-healing sync failed:', e);
+        });
     };
     setupAndCheck();
+  }, []);
+
+  // Global Keyboard listener for command palette (Ctrl+K or Cmd+K)
+  useEffect(() => {
+    const handleGlobalShortcuts = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setIsCommandPaletteOpen(prev => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleGlobalShortcuts);
+    return () => window.removeEventListener('keydown', handleGlobalShortcuts);
   }, []);
 
   const supabase = getSupabaseClient();
@@ -349,6 +377,7 @@ export default function App() {
     { id: 'emails' as ActiveTab, label: t.nav.emails, icon: Mail },
     { id: 'calculator' as ActiveTab, label: t.nav.calculator, icon: Calculator },
     { id: 'optimizer' as ActiveTab, label: t.nav.optimizer, icon: Sparkles },
+    { id: 'prompt_translator' as ActiveTab, label: t.nav.prompt_translator, icon: Languages },
     { id: 'automation' as ActiveTab, label: t.nav.automation, icon: Webhook },
     { id: 'expenses' as ActiveTab, label: t.nav.expenses, icon: Coins },
     { id: 'ai_agent' as ActiveTab, label: t.nav.ai_agent, icon: Brain },
@@ -378,8 +407,11 @@ export default function App() {
                 <FolderGit2 className="h-5.5 w-5.5" />
               </div>
               <div>
-                <h2 className="font-extrabold text-sm text-slate-800 tracking-tight leading-tight select-none">
-                  {lang === 'ar' ? 'بوابة المطورين' : 'DevPortal'}
+                <h2 className="font-extrabold text-sm text-slate-800 tracking-tight leading-tight select-none flex items-center gap-1.5">
+                  <span>{lang === 'ar' ? 'بوابة المطورين' : 'DevPortal'}</span>
+                  <span className="bg-slate-100/90 text-slate-600 text-[9px] font-black font-mono px-1.5 py-0.5 rounded border border-slate-200">
+                    v5.5.5
+                  </span>
                 </h2>
                 <button
                   onClick={() => setIsConnSetupOpen(true)}
@@ -529,6 +561,7 @@ export default function App() {
                 {activeTab === 'emails' && t.nav.emails}
                 {activeTab === 'calculator' && t.nav.calculator}
                 {activeTab === 'optimizer' && t.nav.optimizer}
+                {activeTab === 'prompt_translator' && t.nav.prompt_translator}
                 {activeTab === 'automation' && t.nav.automation}
                 {activeTab === 'expenses' && t.nav.expenses}
                 {activeTab === 'ai_agent' && t.nav.ai_agent}
@@ -562,6 +595,7 @@ export default function App() {
                 recentProjects={projects.slice(0, 3)} // Show the 3 latest projects
                 onNavigate={handleNavigate}
                 onAddProjectClick={handleFastAddProject}
+                lang={lang}
               />
             )}
 
@@ -581,6 +615,7 @@ export default function App() {
                 onDeleteProject={handleDeleteProject}
                 isAddModalOpen={isAddProjectModalOpen}
                 setIsAddModalOpen={setIsAddProjectModalOpen}
+                lang={lang}
               />
             )}
 
@@ -618,6 +653,13 @@ export default function App() {
               <OptimizerView
                 key="optimizer-view"
                 t={t.optimizer}
+                lang={lang}
+              />
+            )}
+
+            {activeTab === 'prompt_translator' && (
+              <PromptTranslator
+                key="prompt-translator-view"
                 lang={lang}
               />
             )}
@@ -880,6 +922,22 @@ export default function App() {
         }} 
         isOpen={isAIAssistantOpen} 
         onClose={() => setIsAIAssistantOpen(false)} 
+      />
+
+      {/* Global Advanced Command Palette */}
+      <CommandPalette
+        isOpen={isCommandPaletteOpen}
+        onClose={() => setIsCommandPaletteOpen(false)}
+        onNavigate={handleNavigate}
+        lang={lang}
+        onToggleLang={toggleLanguage}
+        onOpenDiagnostics={() => {
+          setIsDiagnosticsModalOpen(true);
+          setDiagnosticsActiveTab('tests');
+        }}
+        onOpenSync={() => setIsConnSetupOpen(true)}
+        onAddProject={handleFastAddProject}
+        onOpenAIAssistant={() => setIsAIAssistantOpen(true)}
       />
     </div>
   );

@@ -1,4 +1,4 @@
-export type ActiveTab = 'dashboard' | 'resources' | 'projects' | 'secrets' | 'emails' | 'automation' | 'calculator' | 'optimizer' | 'expenses' | 'ai_agent';
+export type ActiveTab = 'dashboard' | 'resources' | 'projects' | 'secrets' | 'emails' | 'automation' | 'calculator' | 'optimizer' | 'expenses' | 'ai_agent' | 'prompt_translator';
 
 export type Language = 'ar' | 'en';
 
@@ -47,6 +47,7 @@ export interface LocalizationSchema {
     optimizer: string;
     expenses: string;
     ai_agent: string;
+    prompt_translator: string;
   };
   dashboard: {
     welcome: string;

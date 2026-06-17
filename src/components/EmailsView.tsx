@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Mail, Plus, Copy, Check, ChevronDown, ChevronUp, Trash2, Tag, Info, PlusCircle, X, Sparkles, ShieldAlert } from 'lucide-react';
 import { LocalizationSchema, Language } from '../types';
 import GoogleServicesHub from './GoogleServicesHub';
+import { safeCopyToClipboard } from '../utils/clipboard';
 
 interface EmailAlias {
   id: string;
@@ -84,7 +85,7 @@ export default function EmailsView({ t, lang }: EmailsViewProps) {
   };
 
   const handleCopy = (address: string, id: string) => {
-    navigator.clipboard.writeText(address);
+    safeCopyToClipboard(address);
     setCopiedId(id);
     setTimeout(() => setCopiedId(null), 2000);
   };

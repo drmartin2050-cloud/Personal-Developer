@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ShieldAlert, AlertTriangle, Info, Copy, ClipboardCheck, ExternalLink, ChevronDown, ChevronUp } from 'lucide-react';
 import { AdvancedErrorInfo } from '../types';
 import { diagnoseError } from '../utils/errorDiagnoser';
+import { safeCopyToClipboard } from '../utils/clipboard';
 
 interface ErrorDisplayProps {
   error: AdvancedErrorInfo;
@@ -61,7 +62,7 @@ Root Cause Suggestion: ${diagnostics.rootCauseEn}
 Suggested Fix: ${diagnostics.suggestionEn}
     `.trim();
 
-    navigator.clipboard.writeText(detailsText);
+    safeCopyToClipboard(detailsText);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
     if (onCopySuccess) onCopySuccess();

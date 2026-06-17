@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { LocalizationSchema, CredentialItem } from '../types';
 import { encryptText, decryptText } from '../utils/crypto';
+import { safeCopyToClipboard } from '../utils/clipboard';
 
 interface SecretsViewProps {
   key?: string;
@@ -153,7 +154,7 @@ export default function SecretsView({
   };
 
   const copyToClipboard = (text: string, labelId: string) => {
-    navigator.clipboard.writeText(text);
+    safeCopyToClipboard(text);
     setCopiedField(labelId);
     setTimeout(() => {
       setCopiedField(null);
@@ -165,7 +166,7 @@ export default function SecretsView({
     const rawSecret = decryptText(cred.secretKey, masterPasswordKey);
     const credentialBundle = `Service: ${cred.serviceName}\nAPI Token: ${rawToken}\nSecret Key: ${rawSecret}\nIP/Link: ${cred.ipAddress}`;
     
-    navigator.clipboard.writeText(credentialBundle);
+    safeCopyToClipboard(credentialBundle);
     setCopiedField(`quick-${cred.id}`);
     setTimeout(() => setCopiedField(null), 2500);
 

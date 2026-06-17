@@ -1,6 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'motion/react';
-import { FolderGit2, ShieldAlert, Library, PlusCircle, ShieldCheck, ExternalLink, ArrowRight, Sparkles, Server } from 'lucide-react';
+import { 
+  FolderGit2, ShieldAlert, Library, PlusCircle, ShieldCheck, ExternalLink, ArrowRight, 
+  Sparkles, Server, Cpu, Layers, Network, Database, RefreshCw, CheckCircle2, Zap, FileText 
+} from 'lucide-react';
 import { LocalizationSchema, Project, ActiveTab } from '../types';
 
 interface DashboardViewProps {
@@ -13,6 +16,7 @@ interface DashboardViewProps {
   recentProjects: Project[];
   onNavigate: (tab: ActiveTab) => void;
   onAddProjectClick: () => void;
+  lang?: 'ar' | 'en';
 }
 
 export default function DashboardView({
@@ -24,6 +28,7 @@ export default function DashboardView({
   recentProjects,
   onNavigate,
   onAddProjectClick,
+  lang = 'ar',
 }: DashboardViewProps) {
   const stats = [
     {
@@ -296,6 +301,120 @@ export default function DashboardView({
         </div>
 
       </div>
+
+      {/* Modern V5.5.5 Core Upgrades control dashboard panel */}
+      <div id="v5-upgrade-center" className="rounded-3xl border border-slate-200 bg-white p-6 sm:p-8 shadow-3d-flat select-none space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-5">
+          <div className="space-y-1">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-sky-50 border border-sky-200 text-sky-800 rounded-full text-[10px] font-black tracking-widest uppercase">
+              <Zap className="h-3 w-3 text-sky-600 fill-sky-600 animate-pulse" />
+              <span>{lang === 'ar' ? 'التحديث الشامل v5.5.5 جاهز' : 'SYSTEM UPGRADE v5.5.5 LIVE'}</span>
+            </div>
+            <h3 className="text-xl font-black text-slate-800 tracking-tight">
+              {lang === 'ar' ? 'دليل إمكانيات ومميزات ترقية الإصدار V5.5.5' : 'V5.5.5 Professional Software Upgrade Center'}
+            </h3>
+            <p className="text-xs text-slate-505 font-bold">
+              {lang === 'ar' ? 'استعراض التحديثات الذكية الشاملة التي تم إدراجها في بنية التطبيق وقدراته الفائقة.' : 'Technical release notes, system capabilities, and structural optimizations.'}
+            </p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <span className="h-2 w-2 rounded-full bg-emerald-500 animate-ping" />
+            <span className="bg-slate-100/90 text-slate-850 px-3 py-1 text-xs font-black font-mono border border-slate-200 rounded-xl">
+              CORE v5.5.5
+            </span>
+          </div>
+        </div>
+
+        {/* Bento Grid layout representing the structural updates */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          
+          {/* Feature 1 */}
+          <div className="p-5 rounded-2.5xl border border-slate-150/80 bg-slate-50/50 hover:bg-slate-50 hover:border-sky-300 transition-all duration-300 flex items-start gap-4">
+            <div className="p-3 bg-sky-50 border border-sky-100 text-sky-600 rounded-2xl shadow-xs shrink-0">
+              <RefreshCw className="h-5 w-5 animate-spin-slow" />
+            </div>
+            <div className="space-y-1.5">
+              <h4 className="font-extrabold text-sm sm:text-base text-slate-800">
+                {lang === 'ar' ? 'نظام الترجمة الفائق ثنائي المسار 🎯' : 'Dual-Path Prompt Translator Engine'}
+              </h4>
+              <p className="text-xs text-slate-505 font-bold leading-relaxed">
+                {lang === 'ar' 
+                  ? 'تم تحديث موديول ترجمة البرومبتات ليدعم وضعين احترافيين: "هندسة وتحسين البرومبت" (إضافة مدخلات ذكية لتوجيه ومحاكاة النماذج)، و"الترجمة الدقيقة الحرفية" (للحفاظ التام على أسلوب الكاتب وسياقه الطبيعي).'
+                  : 'Allows selecting between "Engineered Prompt Optimization" for professional structural LLM prompt styling, and "Faithful Translation" to output strict literal translations.'}
+              </p>
+            </div>
+          </div>
+
+          {/* Feature 2 */}
+          <div className="p-5 rounded-2.5xl border border-slate-150/80 bg-slate-50/50 hover:bg-slate-50 hover:border-indigo-300 transition-all duration-300 flex items-start gap-4">
+            <div className="p-3 bg-indigo-50 border border-indigo-100 text-indigo-600 rounded-2xl shadow-xs shrink-0">
+              <Layers className="h-5 w-5" />
+            </div>
+            <div className="space-y-1.5">
+              <h4 className="font-extrabold text-sm sm:text-base text-slate-800">
+                {lang === 'ar' ? 'تزامن البيانات المرن والهجين سحابياً ☁️' : 'Dual-Layer Res resilient Database Sync'}
+              </h4>
+              <p className="text-xs text-slate-505 font-bold leading-relaxed">
+                {lang === 'ar' 
+                  ? 'دعم متكامل ومزامن فوري بين قواعد البيانات السحابية ومخزن الطوارئ المحلي (Local Storage Redundancy) لضمان عدم فقدان أي سطر برومبت أو بيانات عند انقطاع الشبكة أو حدوث خلل فني سحابي.'
+                  : 'Complete data fault-tolerance. Automatic system redirection between live cloud services and local fallback cache depending on immediate API health scores.'}
+              </p>
+            </div>
+          </div>
+
+          {/* Feature 3 */}
+          <div className="p-5 rounded-2.5xl border border-slate-150/80 bg-slate-50/50 hover:bg-slate-50 hover:border-emerald-300 transition-all duration-300 flex items-start gap-4">
+            <div className="p-3 bg-emerald-50 border border-emerald-100 text-emerald-600 rounded-2xl shadow-xs shrink-0">
+              <ShieldCheck className="h-5 w-5" />
+            </div>
+            <div className="space-y-1.5">
+              <h4 className="font-extrabold text-sm sm:text-base text-slate-800">
+                {lang === 'ar' ? 'أمان فك التشفير المحلي الفوري 🔒' : 'Military Obfuscation & Lock Vault'}
+              </h4>
+              <p className="text-xs text-slate-505 font-bold leading-relaxed">
+                {lang === 'ar' 
+                  ? 'توجيه كلمات السر والمفاتيح لآلية تشفير AES-Obfuscator ممتازة، تمنع القشرة الخارجية من عرض البيانات بدون كلمة المرور الموحدة للأمان مع القدرة على قفل الخزنة بضغطة زر وحذف الكاش تلقائياً.'
+                  : 'Enables quick cryptographically secured lock and storage of API keys and server addresses. Instantly masks and encrypts content with a Master Password.'}
+              </p>
+            </div>
+          </div>
+
+          {/* Feature 4 */}
+          <div className="p-5 rounded-2.5xl border border-slate-150/80 bg-slate-50/50 hover:bg-slate-50 hover:border-cyan-300 transition-all duration-300 flex items-start gap-4">
+            <div className="p-3 bg-cyan-50 border border-cyan-100 text-cyan-600 rounded-2xl shadow-xs shrink-0">
+              <Cpu className="h-5 w-5 animate-pulse" />
+            </div>
+            <div className="space-y-1.5">
+              <h4 className="font-extrabold text-sm sm:text-base text-slate-800">
+                {lang === 'ar' ? 'وحدة المراقبة الذاتية Sentry Core 🤖' : 'Sentry Autonomous Monitoring Core'}
+              </h4>
+              <p className="text-xs text-slate-505 font-bold leading-relaxed">
+                {lang === 'ar' 
+                  ? 'وكيل المراقبة الذاتي (Sentry Control Panel) الذي يعمل باستمرار لفحص سلامة المفاتيح والأداء وحزم الاختبار، مما يضمن خروج التطبيق دائماً بأعلى درجات الجاهزية والاستقرار (System Health Score).'
+                  : 'Automated background scanning framework providing continuous health checks, connection assessments, diagnostic logs and instant environment validation.'}
+              </p>
+            </div>
+          </div>
+
+        </div>
+
+        {/* Action Button to launch details or explore */}
+        <div className="flex flex-col sm:flex-row items-center justify-between p-4 bg-slate-50 rounded-2.5xl border border-slate-150 gap-4">
+          <span className="text-xs text-slate-500 font-semibold text-center sm:text-left">
+            {lang === 'ar' 
+              ? 'إن جميع مكونات النظام تدعم بالكامل الإصدار v5.5.5 لتوفير تجربة برمجية متطورة للغاية.'
+              : 'All modules, databases, components and services are synced live to version V5.5.5.'}
+          </span>
+          <button
+            onClick={() => onNavigate('prompt_translator')}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-black rounded-xl shadow-md cursor-pointer transition-all shrink-0"
+          >
+            <span>{lang === 'ar' ? 'جرب مترجم الأوامر الجديد الفائق بنظام v5.5.5' : 'Try Upgraded Translator Now'}</span>
+            <ArrowRight className="h-3.5 w-3.5 rtl:rotate-180" />
+          </button>
+        </div>
+      </div>
+
     </motion.div>
   );
 }

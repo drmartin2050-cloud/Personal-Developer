@@ -553,3 +553,409 @@ export async function deleteDatabase(id: string): Promise<boolean> {
     return false;
   }
 }
+
+/**
+ * Automatically scans environment variables, window.__ENV, window.env, and import.meta.env, 
+ * validates them, and registers them automatically in the Secure Vault (secret_keys and database registries) 
+ * if they are not already there.
+ */
+export async function autoRegisterEnvironmentSecrets(): Promise<{ registeredKeys: string[], registeredDbs: string[] }> {
+  const registeredKeys: string[] = [];
+  const registeredDbs: string[] = [];
+
+  const masterPass = sessionStorage.getItem('dynamic_vault_auth_token') || 'Eissa2026';
+
+  // Gather all potential sources
+  const windowEnvBigSpace = (window as any).__ENV || {};
+  const windowEnv = (window as any).env || {};
+  const metaEnv = (import.meta as any).env || {};
+
+  // Find all unique key-value pairs from all source providers
+  const allEnvKeys = new Set<string>([
+    ...Object.keys(windowEnvBigSpace),
+    ...Object.keys(windowEnv),
+    ...Object.keys(metaEnv)
+  ]);
+
+  // Read existing keys to prevent duplicates
+  let existingKeys: SecretKeyRecord[] = [];
+  try {
+    existingKeys = await getAllKeys();
+  } catch (e) {
+    console.warn('[Vault Auto-Sync] Could not read existing keys for verification:', e);
+  }
+
+  // De-duplicate helper using raw values
+  const decryptedValuesSet = new Set<string>();
+  for (const k of existingKeys) {
+    try {
+      const dec = await decryptWithWebCrypto(k.encrypted_value, masterPass);
+      if (dec) {
+        decryptedValuesSet.add(dec.trim());
+      }
+    } catch {
+      // Ignore if decryption fails with another key
+    }
+  }
+
+  // Same for databases
+  let existingDbs: DatabaseRegistryRecord[] = [];
+  try {
+    existingDbs = await getAllDatabases();
+  } catch (e) {
+    console.warn('[Vault Auto-Sync] Could not read existing databases:', e);
+  }
+
+  const decryptedDbsSet = new Set<string>();
+  for (const d of existingDbs) {
+    try {
+      const dec = await decryptWithWebCrypto(d.connection_string, masterPass);
+      if (dec) {
+        decryptedDbsSet.add(dec.trim());
+      }
+    } catch {
+      // Ignore
+    }
+  }
+
+  // Define target mappings for well-known keys
+  const keyMappings = [
+    { envName: 'GROQ_API_KEY', platform: 'Groq', type: 'API_KEY', defaultLink: 'https://console.groq.com' },
+    { envName: 'GEMINI_API_KEY', platform: 'Gemini', type: 'API_KEY', defaultLink: 'https://aistudio.google.com' },
+    { envName: 'OPENAI_API_KEY', platform: 'OpenAI', type: 'API_KEY', defaultLink: 'https://platform.openai.com' },
+    { envName: 'DEEPSEEK_API_KEY', platform: 'DeepSeek', type: 'API_KEY', defaultLink: 'https://platform.deepseek.com' },
+    { envName: 'VITE_GROQ_API_KEY', platform: 'Groq', type: 'API_KEY', defaultLink: 'https://console.groq.com' },
+    { envName: 'VITE_GEMINI_API_KEY', platform: 'Gemini', type: 'API_KEY', defaultLink: 'https://aistudio.google.com' },
+    { envName: 'VITE_OPENAI_API_KEY', platform: 'OpenAI', type: 'API_KEY', defaultLink: 'https://platform.openai.com' },
+    { envName: 'VITE_DEEPSEEK_API_KEY', platform: 'DeepSeek', type: 'API_KEY', defaultLink: 'https://platform.deepseek.com' },
+    { envName: 'VITE_SUPABASE_ANON_KEY', platform: 'Supabase', type: 'ANON_KEY', defaultLink: 'https://supabase.com' },
+    { envName: 'SUPABASE_ANON_KEY', platform: 'Supabase', type: 'ANON_KEY', defaultLink: 'https://supabase.com' },
+    { envName: 'VITE_FIREBASE_API_KEY', platform: 'Firebase', type: 'API_KEY', defaultLink: 'https://firebase.google.com' }
+  ];
+
+  for (const mapping of keyMappings) {
+    // Read key value from any source
+    const rawVal = windowEnvBigSpace[mapping.envName] || windowEnv[mapping.envName] || metaEnv[mapping.envName] || '';
+    if (typeof rawVal !== 'string') continue;
+
+    const trimmed = rawVal.trim().replace(/^["']|["']$/g, '');
+    if (!trimmed || trimmed.includes('%%') || trimmed.includes('your_') || trimmed.includes('placeholder')) {
+      continue;
+    }
+
+    // Check if we already have it in the decrypted set
+    if (decryptedValuesSet.has(trimmed)) {
+      continue;
+    }
+
+    // Register it automatically
+    console.log(`[Vault Auto-Sync] Auto-registering discovered secret key: ${mapping.platform} (${mapping.envName})`);
+    const keyName = `${mapping.platform} Auto-Sync`;
+    const res = await saveNewKey(
+      mapping.platform,
+      keyName,
+      mapping.type,
+      trimmed,
+      mapping.defaultLink,
+      100.0, // initial balance
+      masterPass
+    );
+    if (res.success) {
+      registeredKeys.push(mapping.platform);
+      decryptedValuesSet.add(trimmed);
+    }
+  }
+
+  // Also sweep other environment keys that might match general secret key patterns (e.g. starts with gsk_, sk-, etc. or ends with _KEY / _SECRET)
+  for (const name of allEnvKeys) {
+    // Avoid double processing already routed keys
+    if (keyMappings.some(m => m.envName === name)) continue;
+
+    const rawVal = windowEnvBigSpace[name] || windowEnv[name] || metaEnv[name] || '';
+    if (typeof rawVal !== 'string') continue;
+
+    const trimmed = rawVal.trim().replace(/^["']|["']$/g, '');
+    if (!trimmed || trimmed.includes('%%') || trimmed.includes('your_') || trimmed.includes('placeholder')) {
+      continue;
+    }
+
+    // Heuristics for Secret Key naming
+    const nameLower = name.toLowerCase();
+    const isSecretKey = nameLower.endsWith('_key') || 
+                        nameLower.endsWith('_secret') || 
+                        nameLower.endsWith('_token') ||
+                        trimmed.startsWith('gsk_') || 
+                        trimmed.startsWith('sk-') || 
+                        trimmed.startsWith('AIzaSy');
+
+    if (isSecretKey && !decryptedValuesSet.has(trimmed)) {
+      // Extract clean platform name from the variable name
+      let platform = name.replace(/^VITE_/, '').replace(/_KEY$/, '').replace(/_SECRET$/, '').replace(/_TOKEN$/, '');
+      platform = platform.charAt(0).toUpperCase() + platform.slice(1).toLowerCase();
+
+      console.log(`[Vault Auto-Sync] Auto-registering general custom secret: ${platform} (${name})`);
+      const res = await saveNewKey(
+        platform,
+        `${platform} Auto-Key`,
+        'API_KEY',
+        trimmed,
+        'https://google.com',
+        100.0,
+        masterPass
+      );
+      if (res.success) {
+        registeredKeys.push(platform);
+        decryptedValuesSet.add(trimmed);
+      }
+    }
+  }
+
+  // Database registration / IPs auto-sync
+  // List of possible connection string variables
+  const dbVarNames = [
+    'VITE_SUPABASE_URL',
+    'DATABASE_URL',
+    'MONGODB_URI',
+    'DB_HOST',
+    'DB_CONNECTION',
+    'POSTGRES_URL',
+    'MYSQL_URL'
+  ];
+
+  for (const dbName of dbVarNames) {
+    const rawVal = windowEnvBigSpace[dbName] || windowEnv[dbName] || metaEnv[dbName] || '';
+    if (typeof rawVal !== 'string') continue;
+
+    const trimmed = rawVal.trim().replace(/^["']|["']$/g, '');
+    if (!trimmed || trimmed.includes('%%') || trimmed.includes('your_') || trimmed.includes('placeholder')) {
+      continue;
+    }
+
+    if (!decryptedDbsSet.has(trimmed)) {
+      let dbType = 'PostgreSQL';
+      let title = 'Supabase DB Sync';
+      
+      if (dbName.includes('MONGODB')) {
+        dbType = 'MongoDB';
+        title = 'MongoDB Cluster';
+      } else if (dbName.includes('MYSQL')) {
+        dbType = 'MySQL';
+        title = 'MySQL Database';
+      } else if (dbName.includes('DB_HOST')) {
+        dbType = 'Database Host';
+        title = `Dynamic Database Host IP`;
+      } else if (dbName.includes('URL') && !dbName.includes('SUPABASE')) {
+        dbType = 'Connection URL';
+        title = 'General Service URL';
+      }
+
+      console.log(`[Vault Auto-Sync] Auto-registering database registry URL: ${title} (${dbName})`);
+      const res = await saveDatabase(
+        title,
+        dbType,
+        trimmed,
+        masterPass
+      );
+      if (res.success) {
+        registeredDbs.push(title);
+        decryptedDbsSet.add(trimmed);
+      }
+    }
+  }
+
+  console.log('[Sentry Auto-Sync Complete] Registered Secrets:', registeredKeys, 'Registered DBs/IPs:', registeredDbs);
+  return { registeredKeys, registeredDbs };
+}
+
+export interface SavedPromptRecord {
+  id: string;
+  arabic_prompt: string;
+  english_prompt: string;
+  arabic_tokens: number;
+  english_tokens: number;
+  tokens_saved: number;
+  model_id?: string;
+  created_at: string;
+  is_cloud?: boolean;
+}
+
+const STORAGE_PROMPTS_KEY = 'h_sec_prompts_records';
+
+/**
+ * Fetch all saved translation prompt records (Supabase with LocalStorage fallback)
+ */
+export async function getSavedPrompts(): Promise<SavedPromptRecord[]> {
+  const supabase = getSupabaseClient();
+  if (!supabase) {
+    const local = getLocalData<SavedPromptRecord[]>(STORAGE_PROMPTS_KEY, []);
+    return local.map(r => ({ ...r, is_cloud: false }));
+  }
+
+  // Try prompt_history (from supabase_schema.sql blueprint) first
+  try {
+    const { data, error } = await supabase
+      .from('prompt_history')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (!error && data) {
+      return data.map(r => ({
+        id: r.id,
+        arabic_prompt: r.arabic_prompt,
+        english_prompt: r.english_prompt,
+        arabic_tokens: r.arabic_tokens,
+        english_tokens: r.english_tokens,
+        tokens_saved: r.tokens_saved,
+        model_id: r.model_id || 'gpt-4o',
+        created_at: r.created_at,
+        is_cloud: true
+      }));
+    }
+    if (error) throw error;
+  } catch (err: any) {
+    console.warn('[Vault Prompts] Fetch from prompt_history failed, trying saved_prompts:', err.message || err);
+  }
+
+  // Try saved_prompts next
+  try {
+    const { data, error } = await supabase
+      .from('saved_prompts')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return (data || []).map(r => ({ ...r, is_cloud: true }));
+  } catch (err: any) {
+    console.warn('[Vault Prompts] Both supabase tables failed or missing, falling back to local storage:', err.message || err);
+    const local = getLocalData<SavedPromptRecord[]>(STORAGE_PROMPTS_KEY, []);
+    return local.map(r => ({ ...r, is_cloud: false }));
+  }
+}
+
+/**
+ * Save translated prompt record to Supabase with automatic local fallback
+ */
+export async function savePromptToVault(
+  arabicPrompt: string,
+  englishPrompt: string,
+  arabicTokens: number,
+  englishTokens: number,
+  tokensSaved: number,
+  modelId: string = 'gpt-4o'
+): Promise<{ success: boolean; data?: SavedPromptRecord; error?: string }> {
+  const uuid = crypto.randomUUID();
+  const nowStr = new Date().toISOString();
+
+  const recordPromptHistory = {
+    id: uuid,
+    arabic_prompt: arabicPrompt,
+    english_prompt: englishPrompt,
+    arabic_tokens: arabicTokens,
+    english_tokens: englishTokens,
+    tokens_saved: tokensSaved,
+    percent_saved: Math.round((tokensSaved / (arabicTokens || 1)) * 100),
+    created_at: nowStr
+  };
+
+  const recordSavedPrompts = {
+    id: uuid,
+    arabic_prompt: arabicPrompt,
+    english_prompt: englishPrompt,
+    arabic_tokens: arabicTokens,
+    english_tokens: englishTokens,
+    tokens_saved: tokensSaved,
+    model_id: modelId,
+    created_at: nowStr
+  };
+
+  const supabase = getSupabaseClient();
+  if (!supabase) {
+    const local = getLocalData<SavedPromptRecord[]>(STORAGE_PROMPTS_KEY, []);
+    const newRec: SavedPromptRecord = {
+      ...recordSavedPrompts,
+      is_cloud: false
+    };
+    local.unshift(newRec); // Prepend to show on top
+    saveLocalData(STORAGE_PROMPTS_KEY, local);
+    return { success: true, data: newRec };
+  }
+
+  // Try inserting into prompt_history table
+  try {
+    const { data, error } = await supabase
+      .from('prompt_history')
+      .insert(recordPromptHistory)
+      .select()
+      .single();
+
+    if (!error && data) {
+      return {
+        success: true,
+        data: {
+          id: data.id,
+          arabic_prompt: data.arabic_prompt,
+          english_prompt: data.english_prompt,
+          arabic_tokens: data.arabic_tokens,
+          english_tokens: data.english_tokens,
+          tokens_saved: data.tokens_saved,
+          model_id: modelId,
+          created_at: data.created_at,
+          is_cloud: true
+        }
+      };
+    }
+    if (error) throw error;
+  } catch (err: any) {
+    console.warn('[Vault Prompts] Insert into prompt_history failed, trying saved_prompts:', err.message || err);
+  }
+
+  // Try inserting into saved_prompts table
+  try {
+    const { data, error } = await supabase
+      .from('saved_prompts')
+      .insert(recordSavedPrompts)
+      .select()
+      .single();
+
+    if (error) throw error;
+    return { success: true, data: { ...data, is_cloud: true } };
+  } catch (err: any) {
+    console.warn('[Vault Prompts] Double SQL sync issues, falling back to Local Storage:', err.message || err);
+    // Local storage fallback
+    const local = getLocalData<SavedPromptRecord[]>(STORAGE_PROMPTS_KEY, []);
+    const newRec: SavedPromptRecord = {
+      ...recordSavedPrompts,
+      id: uuid,
+      is_cloud: false
+    };
+    local.unshift(newRec);
+    saveLocalData(STORAGE_PROMPTS_KEY, local);
+    return { success: true, data: newRec, error: err.message };
+  }
+}
+
+/**
+ * Delete a saved translation prompt record
+ */
+export async function deletePromptFromVault(id: string): Promise<boolean> {
+  const supabase = getSupabaseClient();
+  
+  // Always update local storage first
+  const local = getLocalData<SavedPromptRecord[]>(STORAGE_PROMPTS_KEY, []);
+  const updated = local.filter(p => p.id !== id);
+  saveLocalData(STORAGE_PROMPTS_KEY, updated);
+
+  if (!supabase) {
+    return true;
+  }
+
+  try {
+    // Delete from both potential table names to be clean
+    await supabase.from('prompt_history').delete().eq('id', id);
+    await supabase.from('saved_prompts').delete().eq('id', id);
+    return true;
+  } catch (err) {
+    console.warn('[Vault Prompts] Supabase deletePrompt failed:', err);
+    return true; // We already deleted it from local cache, so we return true for smooth flow
+  }
+}

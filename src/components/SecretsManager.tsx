@@ -9,6 +9,7 @@ import {
 import { PLATFORMS_DATABASE } from '../data/platforms';
 import { detectKeyDetails } from '../utils/keyDetector';
 import { encryptWithWebCrypto, decryptWithWebCrypto } from '../utils/encryption';
+import { safeCopyToClipboard } from '../utils/clipboard';
 import {
   getAllKeys, saveNewKey, updateKeyName, deleteKey, validatePlatformKey,
   verifyAndSyncKey, getUsageLogs, SecretKeyRecord, KeyUsageTrackingRecord
@@ -344,7 +345,7 @@ export default function SecretsManager({ lang }: SecretsManagerProps) {
     try {
       const decrypted = await decryptWithWebCrypto(encryptedVal, masterPass);
       if (!decrypted) throw new Error();
-      navigator.clipboard.writeText(decrypted);
+      safeCopyToClipboard(decrypted);
       setCopiedId(id);
       setTimeout(() => setCopiedId(null), 2000);
       triggerToast(t.copiedText);

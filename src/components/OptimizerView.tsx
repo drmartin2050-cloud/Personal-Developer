@@ -20,6 +20,7 @@ import { getExchangeRates, convertCurrency, formatCurrency, FALLBACK_RATES, Exch
 import { executeWithFailover, FailoverLogEntry } from "../utils/failover";
 import { getSupabaseClient } from "../utils/supabase";
 import { getActiveKey } from "../utils/vaultManager";
+import { safeCopyToClipboard } from "../utils/clipboard";
 
 interface PromptHistoryItem {
   id: string;
@@ -248,7 +249,7 @@ export default function OptimizerView({ t, lang }: OptimizerViewProps) {
   };
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(englishOptimized);
+    safeCopyToClipboard(englishOptimized);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
     showAlert(lang === "ar" ? "تم نسخ الأمر الإنجليزي!" : "Copied optimized English prompt to clipboard!");
