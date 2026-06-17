@@ -1,8 +1,8 @@
 ---
 title: Developer Sentry Portal
 emoji: 🚀
-colorFrom: slate
-colorTo: pink 
+colorFrom: blue
+colorTo: indigo
 sdk: docker
 app_port: 7860
 pinned: false

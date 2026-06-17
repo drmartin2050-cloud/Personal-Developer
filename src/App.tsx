@@ -348,6 +348,8 @@ export default function App() {
       const credWithId: CredentialItem = {
         ...newCred,
         id: `cred-${Date.now()}`,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       };
       setCredentials((prev) => [credWithId, ...prev]);
     }

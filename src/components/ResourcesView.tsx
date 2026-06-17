@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Database, Share2, Bot, Library, Globe, ExternalLink, Plus, X, Trash2, Tag, Sparkles } from 'lucide-react';
+import { Database, Share2, Bot, Library, Globe, ExternalLink, Plus, X, Trash2, Tag, Sparkles, Clock } from 'lucide-react';
 import { LocalizationSchema, ResourceItem } from '../types';
 import { developerResources as SEED_RESOURCES } from '../data/resources';
 import { getSupabaseClient } from '../utils/supabase';
@@ -138,6 +138,8 @@ export default function ResourcesView({ t }: ResourcesViewProps) {
         category,
         url,
         isUserAdded: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       };
 
       const cached = sessionStorage.getItem('dev_hub_custom_resources');
@@ -265,6 +267,12 @@ export default function ResourcesView({ t }: ResourcesViewProps) {
                     <h3 className="text-base font-black text-slate-800 truncate" title={resource.name}>
                       {resource.name}
                     </h3>
+                    {resource.createdAt && (
+                      <div className="text-[10px] text-slate-400 font-mono font-bold tracking-wider mt-1.5 flex items-center gap-1">
+                        <Clock className="h-3 w-3 inline" />
+                        {new Date(resource.createdAt).toLocaleString(lang === 'ar' ? 'ar-EG' : 'en-US')}
+                      </div>
+                    )}
                   </div>
                   <div className="flex items-center gap-2">
                     {/* Delete Icon if user added or in preview */}

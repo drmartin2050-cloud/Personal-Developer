@@ -247,6 +247,8 @@ export default function AutomationView({ t, lang = 'ar' }: AutomationViewProps) 
         id: `local-hook-${Date.now()}`,
         name: newWebhookName,
         webhookUrl: newWebhookUrl,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       };
       
       const updatedList = [newItem, ...webhooks];

@@ -8,6 +8,8 @@ export interface Project {
   platformUsed: string;
   associatedEmail: string;
   projectUrl: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface ResourceItem {
@@ -17,6 +19,8 @@ export interface ResourceItem {
   category: 'database' | 'social' | 'ai';
   url: string;
   isUserAdded?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface CredentialItem {
@@ -26,12 +30,16 @@ export interface CredentialItem {
   apiToken: string; // Stored encrypted
   secretKey: string; // Stored encrypted
   serviceUrl?: string; // Optional URL for quick launching
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface N8NWebhook {
   id: string;
   name: string;
   webhookUrl: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface LocalizationSchema {

@@ -482,6 +482,8 @@ app_port: ${activePort}
         platformUsed: `Hugging Face Space (${space.sdk || 'Gradio'})`,
         associatedEmail: linkedHfEmail,
         projectUrl: `https://huggingface.co/spaces/${space.id}`,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       });
 
       setSyncingSpaces(prev => ({ ...prev, [spaceId]: false }));
@@ -551,6 +553,8 @@ app_port: ${activePort}
         platformUsed: repo.language || 'GitHub Repo',
         associatedEmail: 'drmartin2050@gmail.com',
         projectUrl: repo.html_url,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       });
 
       setSyncingRepos(prev => ({ ...prev, [repoId]: false }));
@@ -605,6 +609,8 @@ app_port: ${activePort}
       platformUsed: finalPlatform,
       associatedEmail: email.trim(),
       projectUrl: formattedUrl,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     });
 
     // Reset Form Fields
@@ -1595,9 +1601,16 @@ app_port: ${activePort}
                       >
                         {/* Name info */}
                         <td className="p-4.5 font-extrabold text-slate-800 max-w-[185px] truncate">
-                          <div className="flex items-center gap-2">
-                            <FileCode className="h-4.5 w-4.5 text-indigo-555 shrink-0 group-hover:animate-bounce" />
-                            <span className="truncate">{project.projectName}</span>
+                          <div className="flex flex-col gap-1">
+                            <div className="flex items-center gap-2">
+                              <FileCode className="h-4.5 w-4.5 text-indigo-555 shrink-0 group-hover:animate-bounce" />
+                              <span className="truncate">{project.projectName}</span>
+                            </div>
+                            {project.createdAt && (
+                              <span className="text-[10px] text-slate-400 font-mono font-bold tracking-wider pl-6">
+                                {new Date(project.createdAt).toLocaleString(lang === 'ar' ? 'ar-EG' : 'en-US')}
+                              </span>
+                            )}
                           </div>
                         </td>
                         
@@ -1666,9 +1679,16 @@ app_port: ${activePort}
                     className="p-4 rounded-2xl border border-slate-200 bg-slate-50/50 space-y-3 shadow-3xs"
                   >
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <FileCode className="h-4.5 w-4.5 text-indigo-600 shrink-0" />
-                        <h4 className="font-black text-slate-800 text-sm truncate max-w-[180px]">{project.projectName}</h4>
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-2">
+                          <FileCode className="h-4.5 w-4.5 text-indigo-600 shrink-0" />
+                          <h4 className="font-black text-slate-800 text-sm truncate max-w-[180px]">{project.projectName}</h4>
+                        </div>
+                        {project.createdAt && (
+                          <span className="text-[10px] text-slate-400 font-mono font-bold tracking-wider pl-6">
+                            {new Date(project.createdAt).toLocaleString(lang === 'ar' ? 'ar-EG' : 'en-US')}
+                          </span>
+                        )}
                       </div>
                       <button
                         onClick={() => {
