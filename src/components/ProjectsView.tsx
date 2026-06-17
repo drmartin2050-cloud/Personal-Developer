@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   FolderGit2, Trash2, Plus, ExternalLink, X, ShieldAlert, FileCode, Search, Sparkles,
-  Github, RefreshCw, GitBranch, Terminal, ShieldCheck, Check, Code2, AlertCircle, Bookmark, Eye, EyeOff, LayoutGrid, Cpu, Layers, Clipboard, Info
+  Github, RefreshCw, GitBranch, Terminal, ShieldCheck, Check, Code2, AlertCircle, Bookmark, Eye, EyeOff, LayoutGrid, Cpu, Layers, Clipboard, Info,
+  Mail, Link, Settings, Copy, Code, CheckCircle2, ChevronRight
 } from 'lucide-react';
 import { LocalizationSchema, Project } from '../types';
 import { safeReadFromClipboard, safeCopyToClipboard } from '../utils/clipboard';
@@ -64,6 +65,255 @@ export default function ProjectsView({
   const [showHfToken, setShowHfToken] = useState(false);
   const [syncingSpaces, setSyncingSpaces] = useState<Record<string, boolean>>({});
   const [syncedSpaceUrls, setSyncedSpaceUrls] = useState<string[]>([]);
+
+  // Email Profile Linking & Custom Docker templates for Hugging Face Spaces
+  const [linkedHfEmail, setLinkedHfEmail] = useState(() => localStorage.getItem('hf_projects_linked_email') || 'drmartin2050@gmail.com');
+  const [selectedDockerTemplate, setSelectedDockerTemplate] = useState<'gradio' | 'streamlit' | 'pytorch' | 'node' | 'fastapi'>('gradio');
+  const [containerDockerPort, setContainerDockerPort] = useState('7860');
+  const [dockerEnvVars, setDockerEnvVars] = useState<string>('MODEL_ID=stabilityai/stable-diffusion-3\nUSE_GPU=true');
+  const [copiedDockerFile, setCopiedDockerFile] = useState(false);
+  const [copiedDockerReadme, setCopiedDockerReadme] = useState(false);
+
+  // Load registered emails list from localStorage (matching EmailsView.tsx)
+  const getRegisteredEmailsAndAliases = () => {
+    const saved = localStorage.getItem('dev_hub_emails_aliases');
+    const emailsList: { address: string; type: 'main' | 'alias'; platform?: string }[] = [];
+    
+    // Fallback seed accounts
+    emailsList.push({ address: 'drmartin2050@gmail.com', type: 'main' });
+    emailsList.push({ address: 'drmartin.bolt@gmail.com', type: 'alias', platform: 'Bolt.new' });
+    emailsList.push({ address: 'drmartin.lovable@gmail.com', type: 'alias', platform: 'Lovable' });
+    emailsList.push({ address: 'drmartin.supabase@gmail.com', type: 'alias', platform: 'Supabase' });
+    emailsList.push({ address: 'eissa.developer@outlook.com', type: 'main' });
+    emailsList.push({ address: 'eissa.v0@outlook.com', type: 'alias', platform: 'v0.dev' });
+    emailsList.push({ address: 'eissa.replit@outlook.com', type: 'alias', platform: 'Replit' });
+
+    if (saved) {
+      try {
+        const accounts = JSON.parse(saved);
+        if (Array.isArray(accounts)) {
+          accounts.forEach((acc: any) => {
+            if (acc?.address && !emailsList.some(e => e.address.toLowerCase() === acc.address.toLowerCase())) {
+              emailsList.push({ address: acc.address, type: 'main' });
+            }
+            if (Array.isArray(acc?.aliases)) {
+              acc.aliases.forEach((alias: any) => {
+                if (alias?.aliasAddress && !emailsList.some(e => e.address.toLowerCase() === alias.aliasAddress.toLowerCase())) {
+                  emailsList.push({
+                    address: alias.aliasAddress,
+                    type: 'alias',
+                    platform: alias.platform
+                  });
+                }
+              });
+            }
+          });
+        }
+      } catch (e) {
+        console.warn("Error parsing EmailsView localStorage state inside ProjectsView", e);
+      }
+    }
+    return emailsList;
+  };
+
+  const getDockerTemplates = (
+    template: 'gradio' | 'streamlit' | 'pytorch' | 'node' | 'fastapi',
+    port: string,
+    envVars: string
+  ): { dockerfile: string; readme: string } => {
+    const activePort = port || '7860';
+    
+    // Parse environment variables to ENV commands
+    const envLines = envVars
+      .split('\n')
+      .map(line => line.trim())
+      .filter(line => line.length > 0 && !line.startsWith('#'))
+      .map(line => {
+        if (line.toUpperCase().startsWith('ENV ')) {
+          return line;
+        }
+        return `ENV ${line}`;
+      })
+      .join('\n');
+
+    const envStatement = envLines ? `\n# Custom Container Environment Secrets\n${envLines}\n` : '';
+
+    let dockerfile = '';
+    let readme = '';
+
+    switch (template) {
+      case 'gradio':
+        dockerfile = `# Use Python base runtime optimal for Gradio
+FROM python:3.10-slim
+
+WORKDIR /code
+
+COPY ./requirements.txt /code/requirements.txt
+RUN pip install --no-cache-dir --upgrade -r /code/requirements.txt
+
+COPY . .
+${envStatement}
+# Run with active port mapping
+EXPOSE ${activePort}
+CMD ["python", "app.py", "--port", "${activePort}"]`;
+        
+        readme = `---
+title: Custom Gradio Space
+emoji: 🚀
+colorFrom: indigo
+colorTo: purple
+sdk: gradio
+sdk_version: 4.19.2
+app_port: ${activePort}
+pinned: false
+license: mit
+---
+
+# Gradio ML Model Space
+Synchronized via the AI Studio Development Hub.
+This Space hosts an interactive app powered by Python Gradio.`;
+        break;
+
+      case 'streamlit':
+        dockerfile = `# Use official lightweight Python runtime
+FROM python:3.10-slim
+
+WORKDIR /app
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+${envStatement}
+# Streamlit required port EXPOSE
+EXPOSE ${activePort}
+
+CMD ["streamlit", "run", "app.py", "--server.port=${activePort}", "--server.address=0.0.0.0"]`;
+
+        readme = `---
+title: Custom Streamlit Space
+emoji: 📊
+colorFrom: blue
+colorTo: green
+sdk: streamlit
+app_port: ${activePort}
+pinned: false
+license: apache-2.0
+---
+
+# Streamlit Data App Space
+Synchronized via the AI Studio Development Hub.
+Created to visualize datasets and model inferences seamlessly.`;
+        break;
+
+      case 'pytorch':
+        dockerfile = `# Torch CUDA-enabled machine learning container
+FROM pytorch/pytorch:2.1.0-cuda11.8-cudnn8-runtime
+
+WORKDIR /workspace
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+${envStatement}
+EXPOSE ${activePort}
+ENV PORT=${activePort}
+
+CMD ["python", "main.py"]`;
+
+        readme = `---
+title: PyTorch CUDA Container
+emoji: 🔥
+colorFrom: red
+colorTo: orange
+sdk: docker
+app_port: ${activePort}
+pinned: false
+license: gpl-3.0
+---
+
+# Advanced CUDA PyTorch Space
+A high-performance machine learning Docker container for deep neural networks.`;
+        break;
+
+      case 'node':
+        dockerfile = `# Lightweight Alpine production container for full-stack SPA and servers
+FROM node:20-alpine
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm ci --only=production
+
+COPY . .
+${envStatement}
+EXPOSE ${activePort}
+ENV PORT=${activePort}
+
+CMD ["node", "server.js"]`;
+
+        readme = `---
+title: Node.js Express Backend
+emoji: ⚡
+colorFrom: green
+colorTo: gray
+sdk: docker
+app_port: ${activePort}
+pinned: false
+license: mit
+---
+
+# Fullstack Javascript Container Space
+Running an Express.js backend or Static SPA optimized for server-side operations.`;
+        break;
+
+      case 'fastapi':
+        dockerfile = `# Python slim FastAPI container
+FROM python:3.10-slim
+
+WORKDIR /code
+
+COPY ./requirements.txt /code/requirements.txt
+RUN pip install --no-cache-dir --upgrade -r /code/requirements.txt
+
+COPY . .
+${envStatement}
+EXPOSE ${activePort}
+
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "${activePort}"]`;
+
+        readme = `---
+title: FastAPI ML Endpoint
+emoji: 🦄
+colorFrom: teal
+colorTo: cyan
+sdk: docker
+app_port: ${activePort}
+pinned: false
+license: mit
+---
+
+# High-Performance FastAPI Space
+Hosts highly performant REST APIs and model inference endpoints.`;
+        break;
+      
+      default:
+        dockerfile = `# Generic Docker template
+FROM alpine:latest
+RUN apk add --no-cache curl
+EXPOSE ${activePort}
+CMD ["echo", "Custom Hugging Face Space Active"]`;
+        readme = `---
+title: Custom Docker Space
+emoji: 🐳
+sdk: docker
+app_port: ${activePort}
+---`;
+    }
+
+    return { dockerfile, readme };
+  };
   
   // Active integration tab ("github" | "huggingface")
   const [activeSyncTab, setActiveSyncTab] = useState<'github' | 'huggingface'>('github');
@@ -112,37 +362,40 @@ export default function ProjectsView({
     setIsHfLoading(true);
     setHfError('');
     try {
-      const sanitizedToken = token.trim();
+      // Clean and sanitize the input token (removing accidentally pasted quotes, brackets, or "Bearer" prefix)
+      let sanitizedToken = token.trim();
+      sanitizedToken = sanitizedToken.replace(/['"\[\]]/g, '').trim();
       
-      // 1. Syntax Prefix Check
+      const hfMatch = sanitizedToken.match(/(hf_[a-zA-Z0-9_-]+)/);
+      if (hfMatch) {
+        sanitizedToken = hfMatch[1];
+      }
+
+      // 1. Syntax Warning check (non-blocking to allow custom token designs/OAuth tokens)
       if (!sanitizedToken.startsWith('hf_')) {
-        throw new Error(
-          lang === 'ar'
-            ? 'تنبيه: نمط الرمز غير مطابق! رموز وصول هانجينغ فيس تبدأ دائماً بـ "hf_". يرجى توليد رمز سليم مع صلاحيات Read على الأقل.'
-            : 'Warning: Invalid token format! Hugging Face access tokens always start with the "hf_" prefix. Please check.'
-        );
+        console.warn('Hugging Face access token warning: Token does not start with standard hf_ prefix. Attempting link anyway.');
       }
 
       // 2. State resets
       setHfUser(null);
       setHfSpaces([]);
 
-      // 3. API direct query to whoami
+      // 3. API direct query
       let whoamiData: any = null;
-      let networkErrorOccurred = false;
 
       try {
-        const userRes = await fetch('https://huggingface.co/api/whoami', {
-          headers: {
-            Authorization: `Bearer ${sanitizedToken}`,
-          }
+        // Use our secure backend proxy to bypass CORS
+        const userRes = await fetch('/api/hf/whoami', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: sanitizedToken })
         });
 
         if (userRes.status === 401 || userRes.status === 403) {
           throw new Error(
             lang === 'ar'
-              ? 'رمز وصول Hugging Face غير مقبول أو منتهي الصلاحية أو لا توجد به صلاحيات قراءة كافية (401/403).'
-              : 'The provided Hugging Face token is invalid, expired, or doesn\'t have read permissions (401/403).'
+              ? 'تأكد من أن الرمز (Token) صالح ويحتوي على صلاحية (Read & Write) ضمن إعدادات Fine-grained Access Tokens. (خطأ 401/403)'
+              : 'Ensure your Token is valid and has "Read & Write" permissions configured under Fine-grained Access Tokens. (Error 401/403)'
           );
         }
 
@@ -156,16 +409,19 @@ export default function ProjectsView({
 
         whoamiData = await userRes.json();
       } catch (fErr: any) {
-        // If it was the credential error we threw, forward it
-        if (fErr.message && (fErr.message.includes('401') || fErr.message.includes('403') || fErr.message.includes('غير مقبول') || fErr.message.includes('invalid'))) {
+        // If it's a known HTTP error we threw, forward it.
+        if (fErr.message && (fErr.message.includes('401') || fErr.message.includes('403') || fErr.message.includes('استجابة غير صالحة'))) {
           throw fErr;
         }
-        
-        console.warn('CORS / sandbox networking error detected on Hugging Face whoami check', fErr);
-        networkErrorOccurred = true;
+        console.error('Hugging Face API backend proxy error:', fErr);
+        throw new Error(
+          lang === 'ar'
+            ? 'يتعذر الاتصال بالخادم الوسيط (Backend) لدينا. قد تكون هناك مشكلة في إعداد Express Server.'
+            : 'Could not connect to the Backend Proxy. There might be an issue with the Express Server setup.'
+        );
       }
 
-      // 4. Successful login
+      // 4. Successful real API login
       if (whoamiData) {
         const parsedUser = {
           name: whoamiData.name || 'hf_user',
@@ -174,13 +430,13 @@ export default function ProjectsView({
           email: whoamiData.email || 'authenticated@huggingface.co',
         };
 
-        // Pull real user spaces
+        // Pull real user spaces via proxy
         let spacesList: any[] = [];
         try {
-          const spacesRes = await fetch(`https://huggingface.co/api/spaces?author=${parsedUser.name}`, {
-            headers: {
-              Authorization: `Bearer ${sanitizedToken}`,
-            }
+          const spacesRes = await fetch('/api/hf/spaces', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: sanitizedToken, author: parsedUser.name })
           });
           if (spacesRes.ok) {
             const rawSpaces = await spacesRes.json();
@@ -198,33 +454,7 @@ export default function ProjectsView({
             }
           }
         } catch (e) {
-          console.warn('Failed compiling user spaces list via API', e);
-        }
-
-        // If no spaces found under owner, add default placeholder developer templates
-        if (spacesList.length === 0) {
-          spacesList = [
-            {
-              id: `${parsedUser.name}/custom-nlp-model`,
-              idFull: `${parsedUser.name}/custom-nlp-model`,
-              author: parsedUser.name,
-              name: 'custom-nlp-model',
-              sdk: 'gradio',
-              likes: 12,
-              private: false,
-              updatedAt: new Date().toISOString()
-            },
-            {
-              id: `${parsedUser.name}/arabic-translation-space`,
-              idFull: `${parsedUser.name}/arabic-translation-space`,
-              author: parsedUser.name,
-              name: 'arabic-translation-space',
-              sdk: 'streamlit',
-              likes: 8,
-              private: true,
-              updatedAt: new Date().toISOString()
-            }
-          ];
+          console.warn('Failed compiling user spaces list via backend proxy', e);
         }
 
         setHfUser(parsedUser);
@@ -232,116 +462,14 @@ export default function ProjectsView({
         setIsHfConnected(true);
         setUsingHfSandbox(false);
         localStorage.setItem('hf_projects_token', sanitizedToken);
-      } else if (networkErrorOccurred) {
-        // Direct API fetch got blocked by sandbox iframe restrictions or CORS.
-        // Let's authenticate them securely with high-fidelity workspace simulator using their active token.
-        const mockUserName = 'drmartin_hf';
-        const parsedUser = {
-          name: mockUserName,
-          fullname: lang === 'ar' ? 'مطور السحاب الذكي (مؤمن)' : 'Authenticated Cloud Developer (Secure)',
-          avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=150&auto=format&fit=crop',
-          email: 'drmartin2050@gmail.com',
-        };
-
-        const spacesList = [
-          {
-            id: 'drmartin/deepseek-arabic-translator',
-            idFull: 'drmartin/deepseek-arabic-translator',
-            author: 'drmartin',
-            name: 'deepseek-arabic-translator',
-            sdk: 'gradio',
-            likes: 340,
-            private: false,
-            updatedAt: new Date().toISOString()
-          },
-          {
-            id: 'drmartin/llama-code-repair-agent',
-            idFull: 'drmartin/llama-code-repair-agent',
-            author: 'drmartin',
-            name: 'llama-code-repair-agent',
-            sdk: 'streamlit',
-            likes: 194,
-            private: false,
-            updatedAt: new Date().toISOString()
-          }
-        ];
-
-        setHfUser(parsedUser);
-        setHfSpaces(spacesList);
-        setIsHfConnected(true);
-        setUsingHfSandbox(true); // Flag connected but with proxy sandbox compatibility
-        localStorage.setItem('hf_projects_token', sanitizedToken);
       }
     } catch (err: any) {
       setHfError(err.message || String(err));
-      if (isManualSetup) {
-        setIsHfConnected(false);
-        localStorage.removeItem('hf_projects_token');
-      }
+      setIsHfConnected(false);
+      localStorage.removeItem('hf_projects_token');
     } finally {
       setIsHfLoading(false);
     }
-  };
-
-  const handleTriggerHfSandbox = () => {
-    setIsHfLoading(true);
-    setHfError('');
-    setUsingHfSandbox(true);
-    
-    setTimeout(() => {
-      setHfUser({
-        name: 'huggingface_sandbox',
-        fullname: lang === 'ar' ? 'خبير الذكاء الاصطناعي م.مارتن' : 'Dr. Martin AI Space Explorer',
-        avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=150&auto=format&fit=crop',
-        email: 'drmartin2050@gmail.com',
-      });
-
-      setHfSpaces([
-        {
-          id: 'sandbox/deepseek-v3-arabic-optimized',
-          idFull: 'sandbox/deepseek-v3-arabic-optimized',
-          author: 'sandbox',
-          name: 'deepseek-v3-arabic-optimized',
-          sdk: 'gradio',
-          likes: 128,
-          private: false,
-          updatedAt: '2026-06-15T22:30:11.000Z'
-        },
-        {
-          id: 'sandbox/qwen-2.5-coder-sandbox',
-          idFull: 'sandbox/qwen-2.5-coder-sandbox',
-          author: 'sandbox',
-          name: 'qwen-2.5-coder-sandbox',
-          sdk: 'streamlit',
-          likes: 84,
-          private: false,
-          updatedAt: '2026-06-14T19:42:00.000Z'
-        },
-        {
-          id: 'sandbox/arabic-whisper-speech-to-text',
-          idFull: 'sandbox/arabic-whisper-speech-to-text',
-          author: 'sandbox',
-          name: 'arabic-whisper-speech-to-text',
-          sdk: 'gradio',
-          likes: 56,
-          private: false,
-          updatedAt: '2026-06-12T15:10:00.000Z'
-        },
-        {
-          id: 'sandbox/stable-diffusion-xl-playground',
-          idFull: 'sandbox/stable-diffusion-xl-playground',
-          author: 'sandbox',
-          name: 'stable-diffusion-xl-playground',
-          sdk: 'docker',
-          likes: 210,
-          private: false,
-          updatedAt: '2026-06-10T11:05:00.000Z'
-        }
-      ]);
-
-      setIsHfConnected(true);
-      setIsHfLoading(false);
-    }, 1000);
   };
 
   const handleSyncHfSpace = (space: any) => {
@@ -352,7 +480,7 @@ export default function ProjectsView({
       onAddProject({
         projectName: space.name,
         platformUsed: `Hugging Face Space (${space.sdk || 'Gradio'})`,
-        associatedEmail: 'drmartin2050@gmail.com',
+        associatedEmail: linkedHfEmail,
         projectUrl: `https://huggingface.co/spaces/${space.id}`,
       });
 
@@ -411,72 +539,6 @@ export default function ProjectsView({
     } finally {
       setIsGitHubLoading(false);
     }
-  };
-
-  const handleTriggerSandbox = () => {
-    setIsGitHubLoading(true);
-    setGitHubError('');
-    setUsingSandbox(true);
-    
-    setTimeout(() => {
-      setGitHubUser({
-        login: 'developer_sandbox',
-        name: lang === 'ar' ? 'المبرمج التجريبي' : 'Sandbox Developer',
-        avatar_url: 'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?q=80&w=150&auto=format&fit=crop',
-        html_url: 'https://github.com',
-        public_repos: 4,
-      });
-
-      setGitHubRepos([
-        {
-          id: 101,
-          name: 'modern-react-dashboard',
-          language: 'TypeScript',
-          html_url: 'https://github.com/sandbox/modern-react-dashboard',
-          description: lang === 'ar' 
-            ? 'لوحة تحكم إحصائية متطورة مبنية بـ React 18 مع دعم Sentry المدمج.' 
-            : 'Enterprise-grade React metrics dashboard UI with beautiful charts & Sentry integration.',
-          forks_count: 14,
-          stargazers_count: 52
-        },
-        {
-          id: 102,
-          name: 'autonomous-ai-router',
-          language: 'Python',
-          html_url: 'https://github.com/sandbox/autonomous-ai-router',
-          description: lang === 'ar'
-            ? 'نظام توجيه برومبتات ذكي ومراقبة أعطال نماذج الذكاء الاصطناعي مع معالجة Failover.'
-            : 'Intelligent LLM agent pipeline and diagnostic dashboard routing with automatic self-healing.',
-          forks_count: 8,
-          stargazers_count: 31
-        },
-        {
-          id: 103,
-          name: 'secure-crypto-key-vault',
-          language: 'Go',
-          html_url: 'https://github.com/sandbox/secure-crypto-key-vault',
-          description: lang === 'ar'
-            ? 'خزنة برمجية مشفرة بكلمة مرور رئيسية لحماية التوكينز ومفاتيح الـ IP وعناوين السيرفر.'
-            : 'High-security AES credential encryption block and offline redundancy storage layer.',
-          forks_count: 4,
-          stargazers_count: 19
-        },
-        {
-          id: 104,
-          name: 'website-bento-portfolio',
-          language: 'CSS',
-          html_url: 'https://github.com/sandbox/website-bento-portfolio',
-          description: lang === 'ar'
-            ? 'صفحة شخصية ومجمع أعمال بتصميم بينتو جذاب شديد الوضوح ومقاييس سريعة.'
-            : 'Clean fluid grid showcase portfolio built with modern responsive CSS utilities.',
-          forks_count: 3,
-          stargazers_count: 12
-        }
-      ]);
-
-      setIsGitHubConnected(true);
-      setIsGitHubLoading(false);
-    }, 1000);
   };
 
   const handleSyncRepository = (repo: any) => {
@@ -771,15 +833,6 @@ export default function ProjectsView({
                             )}
                             <span>{lang === 'ar' ? 'ربط الحساب عبر الـ API' : 'Authenticate & Link'}</span>
                           </button>
-
-                          <button
-                            onClick={handleTriggerSandbox}
-                            disabled={isGitHubLoading}
-                            className="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700/90 disabled:opacity-50 text-sky-400 text-xs font-black flex items-center gap-2 border border-slate-700 cursor-pointer transition shadow-sm"
-                          >
-                            <Terminal className="h-3.5 w-3.5 animate-pulse" />
-                            <span>{lang === 'ar' ? '⚡ تجربة المحاكاة (Sandbox Simulator)' : '⚡ Sandbox Simulator'}</span>
-                          </button>
                         </div>
 
                         {gitHubError && (
@@ -951,13 +1004,13 @@ export default function ProjectsView({
 
               {/* Active Tab is Hugging Face */}
               {activeSyncTab === 'huggingface' && (
-                <>
+                <div className="space-y-6">
                   {!isHfConnected ? (
                     // Hugging Face Link setup flow
                     <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-stretch animate-fadeIn">
                       <div className="md:col-span-12 lg:col-span-7 space-y-4">
                         <div className="space-y-2">
-                          <label className="text-xs font-black text-slate-350 tracking-wider uppercase block">
+                          <label className="text-xs font-black text-slate-355 tracking-wider uppercase block">
                             {lang === 'ar' ? 'رمز وصول Hugging Face (Token) *' : 'Hugging Face Access Token (HF PAT) *'}
                           </label>
                           <div className="relative flex items-center">
@@ -985,7 +1038,7 @@ export default function ProjectsView({
                               <button
                                 type="button"
                                 onClick={() => setShowHfToken(!showHfToken)}
-                                className="absolute right-3.5 text-slate-400 hover:text-white transition cursor-pointer"
+                                className="p-1 text-slate-400 hover:text-white transition cursor-pointer"
                               >
                                 {showHfToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                               </button>
@@ -999,11 +1052,11 @@ export default function ProjectsView({
                           )}
                           {hfPasteStatus === 'blocked' && (
                             <div className="mt-2 p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 space-y-1">
-                              <p className="text-xs text-amber-350 font-black flex items-center gap-1.5">
+                              <p className="text-xs text-amber-355 font-black flex items-center gap-1.5">
                                 <AlertCircle className="h-4 w-4 text-amber-300 shrink-0" />
                                 <span>{lang === 'ar' ? 'تم حظر القراءة التلقائية للمتصفح!' : 'Direct browser reading is restricted!'}</span>
                               </p>
-                              <p className="text-[11px] text-slate-350 leading-relaxed font-bold font-mono">
+                              <p className="text-[11px] text-slate-355 leading-relaxed font-bold font-mono">
                                 {lang === 'ar' 
                                   ? 'بسبب قيود أمان متصفحك داخل إطارات العرض (iFrame)، لا يمكن قراءة حافظتك بنقرة زر واحدة. يرجى المتابعة يدوياً: انقر داخل مربع النص واضغط على (Ctrl+V) أو (Cmd+V) في لوحة مفاتيحك للصق الرمز مباشرة.' 
                                   : 'Due to secure sandboxing restrictions of your browser inside previews, clipboard read failed. Please paste manually: click on the text input and press (Ctrl+V) or (Cmd+V) on your keyboard.'}
@@ -1126,14 +1179,13 @@ export default function ProjectsView({
                             )}
                             <span>{lang === 'ar' ? 'ربط الحساب ومزامنة المساحات' : 'Authenticate & Link Spaces'}</span>
                           </button>
-
+                          
                           <button
-                            onClick={handleTriggerHfSandbox}
-                            disabled={isHfLoading}
-                            className="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700/90 disabled:opacity-50 text-amber-400 text-xs font-black flex items-center gap-2 border border-slate-700 cursor-pointer transition shadow-sm"
+                            onClick={() => window.open('https://huggingface.co/new', '_blank')}
+                            className="px-5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-400 text-xs font-black flex items-center gap-2 border border-slate-700 transition shadow-sm cursor-pointer"
                           >
-                            <Terminal className="h-3.5 w-3.5 animate-pulse" />
-                            <span>{lang === 'ar' ? '⚡ تجربة محاكي المساحات (Sandbox Simulator)' : '⚡ Hugging Face Sandbox'}</span>
+                            <ExternalLink className="h-3.5 w-3.5" />
+                            <span>{lang === 'ar' ? 'فتح متصفح هانجينج فيس المستقل (للتحكم الكامل)' : 'Open Native HF Browser (Full Control)'}</span>
                           </button>
                         </div>
 
@@ -1301,7 +1353,188 @@ export default function ProjectsView({
                       </div>
                     </div>
                   )}
-                </>
+
+                  {/* 📧 Section 1: Complete Linking with Any Registered Primary or Alias Sub-Emails */}
+                  <div className="p-5 bg-white/[0.02] border border-white/5 rounded-3xl space-y-4">
+                    <div className="flex items-start gap-3">
+                      <div className="h-9 w-9 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center shrink-0">
+                        <Mail className="h-5 w-5" />
+                      </div>
+                      <div className="space-y-1">
+                        <h4 className="text-sm font-black text-white flex items-center gap-2">
+                          <span>{lang === 'ar' ? 'ربط هوية ومساحات Hugging Face بالبريد الإلكتروني المبرمج' : 'Link Hugging Face with Registered Email/Alias'}</span>
+                          <span className="px-2 py-0.5 rounded-lg bg-emerald-500/15 text-emerald-400 text-[9px] uppercase font-black font-mono animate-pulse">
+                            {lang === 'ar' ? 'نشط آمن' : 'Live Sync'}
+                          </span>
+                        </h4>
+                        <p className="text-xs text-slate-400 leading-relaxed font-semibold">
+                          {lang === 'ar' 
+                            ? 'حدد أي بريد رئيسي تم تسجيله في "إدارة الهوية والبروكسي" أو حتى بريد فرعي (Alias) لربط وإسناد مشاريع هانجينغ فيس المستوردة له تلقائياً.' 
+                            : 'Associate all synchronized space deployments with any primary or secondary alias email defined in your proxy account repository.'
+                          }
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center border-t border-white/5 pt-3.5">
+                      <div className="md:col-span-8 space-y-1.5">
+                        <label className="text-[10px] font-black text-amber-350 uppercase tracking-widest block font-mono">
+                          {lang === 'ar' ? 'العنوان البريدي المربوط حالياً *' : 'Selected Active Binding Email *'}
+                        </label>
+                        <select
+                          value={linkedHfEmail}
+                          onChange={(e) => {
+                            setLinkedHfEmail(e.target.value);
+                            localStorage.setItem('hf_projects_linked_email', e.target.value);
+                          }}
+                          className="w-full text-xs text-white bg-slate-900 border border-white/10 rounded-xl p-3 outline-none cursor-pointer focus:border-amber-400 font-mono font-bold"
+                        >
+                          {getRegisteredEmailsAndAliases().map((item, idx) => (
+                            <option key={`${item.address}-${idx}`} value={item.address} className="bg-slate-950 text-white font-mono">
+                              {item.address} — {item.type === 'main' ? (lang === 'ar' ? 'رئيسي' : 'Primary Account') : `${lang === 'ar' ? 'بريد مستعار فرعي لكود' : 'Sub-alias proxy'} (${item.platform})`}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="md:col-span-4 self-end">
+                        <div className="p-3 rounded-2xl bg-amber-500/5 border border-amber-500/10 flex items-center gap-2.5 text-xs">
+                          <Check className="h-4 w-4 text-amber-400 shrink-0 font-extrabold" />
+                          <div className="font-mono">
+                            <span className="block font-black text-amber-300 text-[10px]">{lang === 'ar' ? 'حالة الربط:' : 'BINDING STATE:'}</span>
+                            <span className="text-slate-300 font-bold truncate block max-w-[150px]" title={linkedHfEmail}>{linkedHfEmail}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 🐳 Section 2: Complete Docker Configurator and Space Settings wizard */}
+                  <div className="p-5 bg-white/[0.02] border border-white/5 rounded-3xl space-y-4">
+                    <div className="flex items-start gap-3">
+                      <div className="h-9 w-9 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center shrink-0">
+                        <Layers className="h-5 w-5" />
+                      </div>
+                      <div className="space-y-1">
+                        <h4 className="text-sm font-black text-white flex items-center gap-2">
+                          <span>{lang === 'ar' ? 'مدير ملفات Docker وبقية أشكال إعدادات هانجينغ فيس' : 'Hugging Face Spaces Docker Setup Assistant'}</span>
+                          <span className="px-2 py-0.5 rounded-lg bg-blue-500/15 text-blue-400 text-[9px] uppercase font-black font-mono">
+                            {lang === 'ar' ? 'قوالب جاهزة' : 'Docker SDK'}
+                          </span>
+                        </h4>
+                        <p className="text-xs text-slate-400 leading-relaxed font-semibold">
+                          {lang === 'ar' 
+                            ? 'هل تستخدم حاويات مخصصة؟ قم بتوليد ملف الـ Dockerfile وواجهة الأكواد لجميع تطبيقات ومساحات ومنافذ التشغيل بنقرة واحدة.' 
+                            : 'Using custom containers? Generate deployment-ready Dockerfile templates and application port mappings optimized specifically for Hugging Face Spaces.'
+                          }
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-12 gap-5 border-t border-white/5 pt-4">
+                      {/* Controller Form Column */}
+                      <div className="md:col-span-4 space-y-4">
+                        {/* Template Type Selector */}
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-black text-blue-300 uppercase tracking-wider font-mono block">
+                            {lang === 'ar' ? 'نوع مشروع بيئة العمل *' : 'AI App Tech Stack *'}
+                          </label>
+                          <select
+                            value={selectedDockerTemplate}
+                            onChange={(e) => setSelectedDockerTemplate(e.target.value as any)}
+                            className="w-full text-xs text-white bg-slate-900 border border-white/10 rounded-xl p-3 outline-none cursor-pointer focus:border-blue-400 font-mono font-bold"
+                          >
+                            <option value="gradio">Python Gradio App</option>
+                            <option value="streamlit">Python Streamlit App</option>
+                            <option value="pytorch">PyTorch ML GPU Container</option>
+                            <option value="node">Node.js Express backend / SPA</option>
+                            <option value="fastapi">FastAPI ML endpoint</option>
+                          </select>
+                        </div>
+
+                        {/* Container Port Config */}
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <label className="text-[10px] font-black text-blue-300 uppercase tracking-wider font-mono block">
+                              {lang === 'ar' ? 'منفذ تشغيل الحاوية (Container Port) *' : 'Target Space Port *'}
+                            </label>
+                            <span className="text-[9px] font-mono text-emerald-400 bg-emerald-500/10 px-1.5 rounded uppercase font-black">
+                              {lang === 'ar' ? 'مستحسن 7860' : '7860 is HF standard'}
+                            </span>
+                          </div>
+                          <input
+                            type="text"
+                            value={containerDockerPort}
+                            onChange={(e) => setContainerDockerPort(e.target.value)}
+                            placeholder="7860"
+                            className="w-full text-xs text-white bg-slate-900 border border-white/10 rounded-xl p-3 outline-none focus:border-blue-400 font-mono font-extrabold"
+                          />
+                        </div>
+
+                        {/* Custom Environment Settings */}
+                        <div className="space-y-2">
+                          <label className="text-[10px] font-black text-blue-300 uppercase tracking-wider font-mono block">
+                            {lang === 'ar' ? 'متغيرات البيئة والسرية (ENV Variables)' : 'Docker Environment Secrets'}
+                          </label>
+                          <textarea
+                            value={dockerEnvVars}
+                            onChange={(e) => setDockerEnvVars(e.target.value)}
+                            rows={3}
+                            placeholder="MODEL_ID=stabilityai/stable-diffusion-3&#10;USE_GPU=true"
+                            className="w-full text-xs text-white bg-slate-900 border border-white/10 rounded-xl p-3 outline-none focus:border-blue-400 font-mono"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Code Previews Column */}
+                      <div className="md:col-span-8 flex flex-col gap-4">
+                        {/* Dockerfile Panel */}
+                        <div className="bg-slate-950 border border-white/10 rounded-2.5xl overflow-hidden">
+                          <div className="flex items-center justify-between px-4 py-2 bg-white/5 border-b border-white/5 text-[11px] font-black font-mono">
+                            <span className="text-blue-300 block">Dockerfile template</span>
+                            <button
+                              onClick={() => {
+                                const files = getDockerTemplates(selectedDockerTemplate, containerDockerPort, dockerEnvVars);
+                                safeCopyToClipboard(files.dockerfile);
+                                setCopiedDockerFile(true);
+                                setTimeout(() => setCopiedDockerFile(false), 2500);
+                              }}
+                              className="px-2.5 py-1 rounded bg-slate-900 hover:bg-slate-800 border border-white/10 text-[10px] text-slate-300 hover:text-white transition duration-150 flex items-center gap-1 cursor-pointer"
+                            >
+                              {copiedDockerFile ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
+                              <span>{copiedDockerFile ? (lang === 'ar' ? 'تم النسخ!' : 'Copied!') : (lang === 'ar' ? 'نسخ الكود' : 'Copy')}</span>
+                            </button>
+                          </div>
+                          <pre className="p-4 overflow-x-auto text-[10px] text-indigo-100 font-mono leading-relaxed select-all max-h-48 text-left" dir="ltr">
+                            {getDockerTemplates(selectedDockerTemplate, containerDockerPort, dockerEnvVars).dockerfile}
+                          </pre>
+                        </div>
+
+                        {/* README.md YAML Header for Spaces */}
+                        <div className="bg-slate-950 border border-white/10 rounded-2.5xl overflow-hidden">
+                          <div className="flex items-center justify-between px-4 py-2 bg-white/5 border-b border-white/5 text-[11px] font-black font-mono">
+                            <span className="text-amber-300 block">Hugging Face Space metadata (README.md)</span>
+                            <button
+                              onClick={() => {
+                                const files = getDockerTemplates(selectedDockerTemplate, containerDockerPort, dockerEnvVars);
+                                safeCopyToClipboard(files.readme);
+                                setCopiedDockerReadme(true);
+                                setTimeout(() => setCopiedDockerReadme(false), 2500);
+                              }}
+                              className="px-2.5 py-1 rounded bg-slate-900 hover:bg-slate-800 border border-white/10 text-[10px] text-slate-300 hover:text-white transition duration-150 flex items-center gap-1 cursor-pointer"
+                            >
+                              {copiedDockerReadme ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
+                              <span>{copiedDockerReadme ? (lang === 'ar' ? 'تم النسخ!' : 'Copied!') : (lang === 'ar' ? 'نسخ الكود' : 'Copy')}</span>
+                            </button>
+                          </div>
+                          <pre className="p-4 overflow-x-auto text-[10px] text-amber-100 font-mono leading-relaxed select-all max-h-40 text-left" dir="ltr">
+                            {getDockerTemplates(selectedDockerTemplate, containerDockerPort, dockerEnvVars).readme}
+                          </pre>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               )}
             </motion.div>
           )}

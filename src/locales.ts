@@ -15,6 +15,7 @@ export const locales: Record<'ar' | 'en', LocalizationSchema> = {
       expenses: 'متابع تكاليف الخدمة السحابية',
       ai_agent: 'الوكيل الذكي والـ Sentry',
       prompt_translator: 'مترجم وحافظ الأوامر (Prompts)',
+      diagnostics: 'نافذة التشخيص وأعطال المفاتيح',
     },
     dashboard: {
       welcome: 'أهلاً بك بك في بوابة المطور',
@@ -209,6 +210,7 @@ export const locales: Record<'ar' | 'en', LocalizationSchema> = {
       expenses: 'Expense Tracker',
       ai_agent: 'AI Sentry Control',
       prompt_translator: 'Prompt Translator & Vault',
+      diagnostics: 'Diagnostics Console',
     },
     dashboard: {
       welcome: 'Welcome to Developer Portal',
