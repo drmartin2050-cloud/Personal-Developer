@@ -38,9 +38,10 @@ export function DeploymentChecklist({ lang = 'ar', onToastTrigger }: DeploymentC
     // Check 1: Env Vars
     setChecks(prev => prev.map(c => c.id === 'env_vars' ? { ...c, status: 'scanning' } : c));
     await new Promise(r => setTimeout(r, 600));
+    const windowEnvBigSpace = (window as any).__ENV || {};
     const windowEnv = (window as any).env || {};
     const metaEnv = (import.meta as any).env || {};
-    const hasKeys = windowEnv.GROQ_API_KEY || windowEnv.GEMINI_API_KEY || metaEnv.VITE_GROQ_API_KEY;
+    const hasKeys = windowEnvBigSpace.GROQ_API_KEY || windowEnvBigSpace.GEMINI_API_KEY || windowEnv.GROQ_API_KEY || windowEnv.GEMINI_API_KEY || metaEnv.VITE_GROQ_API_KEY;
     
     setChecks(prev => prev.map(c => {
       if (c.id === 'env_vars') {

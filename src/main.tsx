@@ -116,7 +116,7 @@ const verifyEnvironment = () => {
   
   const keys = ['GROQ_API_KEY', 'GEMINI_API_KEY', 'OPENAI_API_KEY', 'DEEPSEEK_API_KEY'];
   keys.forEach(k => {
-    const val = windowEnvBigSpace[k] || windowEnv[k] || metaEnv[`VITE_${k}`] || '';
+    const val = windowEnvBigSpace[k] || windowEnvBigSpace[`VITE_${k}`] || windowEnv[k] || metaEnv[`VITE_${k}`] || '';
     const cleanVal = typeof val === 'string' ? val.trim() : '';
     const isPresent = !!cleanVal;
     const isPlaceholder = cleanVal.includes('%%') || cleanVal.includes('placeholder');

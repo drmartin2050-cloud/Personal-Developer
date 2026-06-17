@@ -34,12 +34,13 @@ export function SystemStatus({ lang = 'ar', onToastTrigger }: SystemStatusProps)
   
   useEffect(() => {
     // Detect key availability at boot
+    const windowEnvBigSpace = (window as any).__ENV || {};
     const windowEnv = (window as any).env || {};
     const metaEnv = (import.meta as any).env || {};
     
     const getStatus = (p: string) => {
       const up = p.toUpperCase();
-      const hasKey = windowEnv[`${up}_API_KEY`] || metaEnv[`VITE_${up}_API_KEY`];
+      const hasKey = windowEnvBigSpace[`${up}_API_KEY`] || windowEnvBigSpace[`VITE_${up}_API_KEY`] || windowEnv[`${up}_API_KEY`] || metaEnv[`VITE_${up}_API_KEY`];
       return hasKey ? 'online' : 'unconfigured';
     };
 

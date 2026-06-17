@@ -31,10 +31,11 @@ export function getEnvStatus(): EnvValidationResult[] {
   ];
 
   return envVars.map(v => {
-    // Check both import.meta.env and window.env (for Hugging Face Spaces runtime fallback)
+    // Check both window.__ENV, window.env, and import.meta.env (for Hugging Face Spaces runtime fallback)
     const rawVal = 
-      (import.meta as any).env?.[v.name] || 
+      (window as any).__ENV?.[v.name] || 
       (window as any).env?.[v.name] || 
+      (import.meta as any).env?.[v.name] || 
       '';
 
     const isLoaded = !!rawVal && rawVal !== 'your_supabase_url_here' && rawVal !== 'your_supabase_anon_key_here' && rawVal.trim().length > 5;
@@ -105,11 +106,11 @@ export async function testSupabaseConnection(): Promise<ConnectionTestResult> {
     console.warn('Supabase connection handshake failed directly, testing auth domain instead...', err);
     try {
       // fallback check on the endpoint itself to support restricted client setups
-      const url = (import.meta as any).env?.VITE_SUPABASE_URL || '';
+      const url = (window as any).__ENV?.VITE_SUPABASE_URL || (window as any).env?.VITE_SUPABASE_URL || (import.meta as any).env?.VITE_SUPABASE_URL || '';
       if (!url) throw new Error('Missing URL');
       const startFetch = Date.now();
       const res = await fetch(`${url}/rest/v1/`, {
-        headers: { 'apikey': (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || '' }
+        headers: { 'apikey': (window as any).__ENV?.VITE_SUPABASE_ANON_KEY || (window as any).env?.VITE_SUPABASE_ANON_KEY || (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || '' }
       });
       if (res.ok || res.status === 401 || res.status === 400 || res.status === 404) {
         return {

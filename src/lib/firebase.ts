@@ -3,12 +3,16 @@ import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/
 import { getFirestore, doc, getDocFromServer } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
 
-const ENV_FIREBASE_API_KEY = ((import.meta as any).env?.VITE_FIREBASE_API_KEY as string) || ((window as any).env?.VITE_FIREBASE_API_KEY as string) || '';
-const ENV_FIREBASE_AUTH_DOMAIN = ((import.meta as any).env?.VITE_FIREBASE_AUTH_DOMAIN as string) || ((window as any).env?.VITE_FIREBASE_AUTH_DOMAIN as string) || '';
-const ENV_FIREBASE_PROJECT_ID = ((import.meta as any).env?.VITE_FIREBASE_PROJECT_ID as string) || ((window as any).env?.VITE_FIREBASE_PROJECT_ID as string) || '';
-const ENV_FIREBASE_APP_ID = ((import.meta as any).env?.VITE_FIREBASE_APP_ID as string) || ((window as any).env?.VITE_FIREBASE_APP_ID as string) || '';
-const ENV_FIREBASE_STORAGE_BUCKET = ((import.meta as any).env?.VITE_FIREBASE_STORAGE_BUCKET as string) || ((window as any).env?.VITE_FIREBASE_STORAGE_BUCKET as string) || '';
-const ENV_FIREBASE_MESSAGING_SENDER_ID = ((import.meta as any).env?.VITE_FIREBASE_MESSAGING_SENDER_ID as string) || ((window as any).env?.VITE_FIREBASE_MESSAGING_SENDER_ID as string) || '';
+const getEnvVar = (name: string) => {
+  return (window as any).__ENV?.[name] || (import.meta as any).env?.[name] || (window as any).env?.[name];
+};
+
+const ENV_FIREBASE_API_KEY = getEnvVar('VITE_FIREBASE_API_KEY') || '';
+const ENV_FIREBASE_AUTH_DOMAIN = getEnvVar('VITE_FIREBASE_AUTH_DOMAIN') || '';
+const ENV_FIREBASE_PROJECT_ID = getEnvVar('VITE_FIREBASE_PROJECT_ID') || '';
+const ENV_FIREBASE_APP_ID = getEnvVar('VITE_FIREBASE_APP_ID') || '';
+const ENV_FIREBASE_STORAGE_BUCKET = getEnvVar('VITE_FIREBASE_STORAGE_BUCKET') || '';
+const ENV_FIREBASE_MESSAGING_SENDER_ID = getEnvVar('VITE_FIREBASE_MESSAGING_SENDER_ID') || '';
 
 const resolvedConfig = {
   apiKey: ENV_FIREBASE_API_KEY || firebaseConfig.apiKey,

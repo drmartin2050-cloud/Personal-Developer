@@ -35,16 +35,16 @@ function getApiKey(provider: AIProvider): string {
   let key = '';
   switch (provider) {
     case 'groq':
-      key = windowEnvBigSpace.GROQ_API_KEY || windowEnv.GROQ_API_KEY || metaEnv.VITE_GROQ_API_KEY || '';
+      key = windowEnvBigSpace.GROQ_API_KEY || windowEnvBigSpace.VITE_GROQ_API_KEY || windowEnv.GROQ_API_KEY || metaEnv.VITE_GROQ_API_KEY || '';
       break;
     case 'gemini':
-      key = windowEnvBigSpace.GEMINI_API_KEY || windowEnv.GEMINI_API_KEY || metaEnv.VITE_GEMINI_API_KEY || '';
+      key = windowEnvBigSpace.GEMINI_API_KEY || windowEnvBigSpace.VITE_GEMINI_API_KEY || windowEnv.GEMINI_API_KEY || metaEnv.VITE_GEMINI_API_KEY || '';
       break;
     case 'openai':
-      key = windowEnvBigSpace.OPENAI_API_KEY || windowEnv.OPENAI_API_KEY || metaEnv.VITE_OPENAI_API_KEY || '';
+      key = windowEnvBigSpace.OPENAI_API_KEY || windowEnvBigSpace.VITE_OPENAI_API_KEY || windowEnv.OPENAI_API_KEY || metaEnv.VITE_OPENAI_API_KEY || '';
       break;
     case 'deepseek':
-      key = windowEnvBigSpace.DEEPSEEK_API_KEY || windowEnv.DEEPSEEK_API_KEY || metaEnv.VITE_DEEPSEEK_API_KEY || '';
+      key = windowEnvBigSpace.DEEPSEEK_API_KEY || windowEnvBigSpace.VITE_DEEPSEEK_API_KEY || windowEnv.DEEPSEEK_API_KEY || metaEnv.VITE_DEEPSEEK_API_KEY || '';
       break;
   }
 

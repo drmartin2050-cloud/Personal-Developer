@@ -50,12 +50,14 @@ export const DiagnosticsDebugView: React.FC<{ lang: 'en' | 'ar' }> = ({ lang }) 
         keys
       );
 
+      const getEnvVar = (name: string) => {
+        return (window as any).__ENV?.[name] || (window as any).env?.[name] || (import.meta as any).env?.[name];
+      };
+
       // Check environment variables if possible
       const envKeys = {
-        // @ts-ignore
-        VITE_SUPABASE_URL: import.meta.env.VITE_SUPABASE_URL ? import.meta.env.VITE_SUPABASE_URL : 'NOT_FOUND',
-        // @ts-ignore
-        VITE_SUPABASE_ANON_KEY: import.meta.env.VITE_SUPABASE_ANON_KEY ? 'PRESENT (HIDDEN FOR SECURITY)' : 'NOT_FOUND',
+        VITE_SUPABASE_URL: getEnvVar('VITE_SUPABASE_URL') ? getEnvVar('VITE_SUPABASE_URL') : 'NOT_FOUND',
+        VITE_SUPABASE_ANON_KEY: getEnvVar('VITE_SUPABASE_ANON_KEY') ? 'PRESENT (HIDDEN FOR SECURITY)' : 'NOT_FOUND',
       };
 
       addLog('info', lang === 'ar' ? 'بيانات بيئة التشغيل' : 'Environment Variables Config', envKeys);
@@ -68,10 +70,12 @@ export const DiagnosticsDebugView: React.FC<{ lang: 'en' | 'ar' }> = ({ lang }) 
     try {
       addLog('info', lang === 'ar' ? 'بدء فحص اتصال قاعدة بيانات Supabase...' : 'Initiating Supabase connection handshake...');
       
-      // @ts-ignore
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      // @ts-ignore
-      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      const getEnvVar = (name: string) => {
+        return (window as any).__ENV?.[name] || (window as any).env?.[name] || (import.meta as any).env?.[name];
+      };
+      
+      const supabaseUrl = getEnvVar('VITE_SUPABASE_URL');
+      const supabaseKey = getEnvVar('VITE_SUPABASE_ANON_KEY');
 
       if (!supabaseUrl || !supabaseKey) {
         addLog('error', lang === 'ar' ? 'متغيرات بيئة Supabase مفقودة' : 'Supabase environment variables missing. Handshake aborted.');
