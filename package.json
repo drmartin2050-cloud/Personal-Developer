@@ -21,11 +21,15 @@
     "express": "^4.21.2",
     "firebase": "^12.14.0",
     "js-tiktoken": "^1.0.21",
+    "konva": "^10.3.0",
     "lucide-react": "^0.546.0",
     "motion": "^12.23.24",
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
+    "react-konva": "^19.2.5",
     "recharts": "^3.8.1",
+    "use-image": "^1.1.4",
+    "uuid": "^14.0.0",
     "vite": "^6.2.3"
   },
   "devDependencies": {

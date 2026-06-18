@@ -16,6 +16,7 @@ export const locales: Record<'ar' | 'en', LocalizationSchema> = {
       ai_agent: 'الوكيل الذكي والـ Sentry',
       prompt_translator: 'مترجم وحافظ الأوامر (Prompts)',
       diagnostics: 'نافذة التشخيص وأعطال المفاتيح',
+      editor: 'استوديو التصميم (كانفا برو)',
     },
     dashboard: {
       welcome: 'أهلاً بك بك في بوابة المطور',
@@ -211,6 +212,7 @@ export const locales: Record<'ar' | 'en', LocalizationSchema> = {
       ai_agent: 'AI Sentry Control',
       prompt_translator: 'Prompt Translator & Vault',
       diagnostics: 'Diagnostics Console',
+      editor: 'Design Studio (Canva Pro)',
     },
     dashboard: {
       welcome: 'Welcome to Developer Portal',

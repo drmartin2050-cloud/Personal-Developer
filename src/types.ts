@@ -1,4 +1,4 @@
-export type ActiveTab = 'dashboard' | 'resources' | 'projects' | 'secrets' | 'emails' | 'automation' | 'calculator' | 'optimizer' | 'expenses' | 'ai_agent' | 'prompt_translator' | 'diagnostics';
+export type ActiveTab = 'dashboard' | 'resources' | 'projects' | 'secrets' | 'emails' | 'automation' | 'calculator' | 'optimizer' | 'expenses' | 'ai_agent' | 'prompt_translator' | 'diagnostics' | 'editor';
 
 export type Language = 'ar' | 'en';
 

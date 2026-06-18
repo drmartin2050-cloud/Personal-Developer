@@ -17,7 +17,8 @@ import {
   Brain,
   AlertTriangle,
   Languages,
-  Terminal
+  Terminal,
+  LayoutTemplate
 } from 'lucide-react';
 import { ActiveTab, Language, Project, CredentialItem } from './types';
 import { locales } from './locales';
@@ -46,6 +47,7 @@ import ExpenseTracker from './components/ExpenseTracker';
 import AIAgentDashboard from './components/AIAgentDashboard';
 import PromptTranslator from './components/PromptTranslator';
 import { DiagnosticsDebugView } from './components/DiagnosticsDebugView';
+import DesignEditor from './components/DesignEditor';
 
 // Pre-seeded local projects for starting visual feedback
 const SEED_PROJECTS: Project[] = [
@@ -386,6 +388,7 @@ export default function App() {
     { id: 'expenses' as ActiveTab, label: t.nav.expenses, icon: Coins },
     { id: 'ai_agent' as ActiveTab, label: t.nav.ai_agent, icon: Brain },
     { id: 'diagnostics' as ActiveTab, label: t.nav.diagnostics, icon: Terminal },
+    { id: 'editor' as ActiveTab, label: t.nav.editor, icon: LayoutTemplate },
   ];
 
   const handleNavigate = (tab: ActiveTab) => {
@@ -552,42 +555,44 @@ export default function App() {
       <main className="flex-1 flex flex-col min-w-0">
         
         {/* Page title display area below sticky header */}
-        <div className="max-w-7xl w-full mx-auto px-4 md:px-10 pt-6 pb-2">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-slate-200 pb-4">
-            <div>
-              <span className="text-[10px] font-bold text-sky-600 font-mono tracking-widest uppercase">
-                {lang === 'ar' ? 'بوابة التحكم' : 'PROTAL CENTRAL CONTROL'}
-              </span>
-              <h2 className="text-2xl font-black text-slate-800 mt-0.5">
-                {activeTab === 'dashboard' && t.nav.dashboard}
-                {activeTab === 'resources' && t.nav.resources}
-                {activeTab === 'projects' && t.nav.projects}
-                {activeTab === 'secrets' && t.nav.secrets}
-                {activeTab === 'emails' && t.nav.emails}
-                {activeTab === 'calculator' && t.nav.calculator}
-                {activeTab === 'optimizer' && t.nav.optimizer}
-                {activeTab === 'prompt_translator' && t.nav.prompt_translator}
-                {activeTab === 'automation' && t.nav.automation}
-                {activeTab === 'expenses' && t.nav.expenses}
-                {activeTab === 'ai_agent' && t.nav.ai_agent}
-                {activeTab === 'diagnostics' && t.nav.diagnostics}
-              </h2>
-            </div>
-            
-            {/* Quick stats on top */}
-            <div className="flex items-center gap-4 mt-3 sm:mt-0 text-xs text-slate-500">
-              <span className="bg-slate-100 px-3 py-1.5 rounded-xl font-semibold">
-                {t.dashboard.totalProjects}: <strong className="text-slate-800 font-black ml-1 font-mono">{projects.length}</strong>
-              </span>
-              <span className="bg-slate-100 px-3 py-1.5 rounded-xl font-semibold">
-                {t.dashboard.secureSecrets}: <strong className="text-sky-600 font-black ml-1 font-mono">{credentials.length}</strong>
-              </span>
+        {activeTab !== 'editor' && (
+          <div className="max-w-7xl w-full mx-auto px-4 md:px-10 pt-6 pb-2">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-slate-200 pb-4">
+              <div>
+                <span className="text-[10px] font-bold text-sky-600 font-mono tracking-widest uppercase">
+                  {lang === 'ar' ? 'بوابة التحكم' : 'PROTAL CENTRAL CONTROL'}
+                </span>
+                <h2 className="text-2xl font-black text-slate-800 mt-0.5">
+                  {activeTab === 'dashboard' && t.nav.dashboard}
+                  {activeTab === 'resources' && t.nav.resources}
+                  {activeTab === 'projects' && t.nav.projects}
+                  {activeTab === 'secrets' && t.nav.secrets}
+                  {activeTab === 'emails' && t.nav.emails}
+                  {activeTab === 'calculator' && t.nav.calculator}
+                  {activeTab === 'optimizer' && t.nav.optimizer}
+                  {activeTab === 'prompt_translator' && t.nav.prompt_translator}
+                  {activeTab === 'automation' && t.nav.automation}
+                  {activeTab === 'expenses' && t.nav.expenses}
+                  {activeTab === 'ai_agent' && t.nav.ai_agent}
+                  {activeTab === 'diagnostics' && t.nav.diagnostics}
+                </h2>
+              </div>
+              
+              {/* Quick stats on top */}
+              <div className="flex items-center gap-4 mt-3 sm:mt-0 text-xs text-slate-500">
+                <span className="bg-slate-100 px-3 py-1.5 rounded-xl font-semibold">
+                  {t.dashboard.totalProjects}: <strong className="text-slate-800 font-black ml-1 font-mono">{projects.length}</strong>
+                </span>
+                <span className="bg-slate-100 px-3 py-1.5 rounded-xl font-semibold">
+                  {t.dashboard.secureSecrets}: <strong className="text-sky-600 font-black ml-1 font-mono">{credentials.length}</strong>
+                </span>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Core Canvas wrapper */}
-        <div className="flex-1 overflow-y-auto px-4 md:px-10 py-6 max-w-7xl w-full mx-auto">
+        <div className={`flex-1 overflow-y-auto w-full mx-auto ${activeTab === 'editor' ? 'max-w-none px-0 py-0 flex flex-col' : 'max-w-7xl px-4 md:px-10 py-6'}`}>
 
           <AnimatePresence mode="wait">
             {activeTab === 'dashboard' && (
@@ -687,6 +692,13 @@ export default function App() {
             {activeTab === 'diagnostics' && (
               <DiagnosticsDebugView
                 key="diagnostics-view"
+                lang={lang}
+              />
+            )}
+
+            {activeTab === 'editor' && (
+              <DesignEditor
+                key="editor-view"
                 lang={lang}
               />
             )}
